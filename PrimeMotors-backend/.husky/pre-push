@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Injeta o Node direto no ambiente do shell do git (se necessário no Windows)
+export PATH="$PATH:/c/Program Files/nodejs"
+
+echo "Executando testes do Back-end..."
+
+# Executa o script de teste definido no seu package.json do Back-end (geralmente Jest)
+npm test
+
+if [ $? -ne 0 ]; then
+    echo "❌ Testes do Back-end falharam. Push cancelado."
+    exit 1
+fi
+
+echo "✅ Testes do Back-end passaram!"
