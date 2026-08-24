@@ -1,0 +1,46 @@
+.carrossel-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 0; 
+  padding: 0; 
+}
+
+.carrossel-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 1200px; /* ou o que preferir */
+}
+
+.carrossel-viewport {
+  overflow: hidden;
+  flex: 1;
+  position: relative;
+  container-type: inline-size; /* ← habilita 50cqw */
+}
+
+.carrossel-itens {
+  display: flex;
+  transition: transform 0.3s ease;
+  will-change: transform;
+}
+
+.carrossel-item {
+  min-width: 240px;
+  text-align: center;
+}
+
+.carrossel-centro {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.opacity-fraco {
+  opacity: 0.3;
+}
+
+.opacity-medio {
+  opacity: 0.6;
+}

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Injeta o Node direto no ambiente do shell do git
+export PATH="$PATH:/c/Program Files/nodejs"
+
+# Executa o ESLint diretamente pelo node.exe usando o binário local do projeto
+"/c/Program Files/nodejs/node.exe" ./node_modules/eslint/bin/eslint.js .

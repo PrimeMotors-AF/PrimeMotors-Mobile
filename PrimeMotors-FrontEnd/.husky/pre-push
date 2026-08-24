@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Injeta o Node direto no ambiente do shell do git
+export PATH="$PATH:/c/Program Files/nodejs"
+
+# Executa os testes E2E
+echo "Executando testes E2E..."
+cd ../PrimeMotors-TestesE2E || exit 1
+./node_modules/.bin/playwright test
+
+if [ $? -ne 0 ]; then
+  echo "❌ Testes E2E falharam. Push cancelado."
+  cd ../PrimeMotors-FrontEnd
+  exit 1
+fi
+
+cd ../PrimeMotors-FrontEnd
+echo "✅ Testes E2E passaram!"

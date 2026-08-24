@@ -1,0 +1,25 @@
+.register-bg {
+  background-image: url("../assets/RegisterWallpaper.jpg");
+  opacity: 75%;
+  background-size: cover;
+  background-position: center ;
+  background-repeat: no-repeat;
+  width: 100%;
+}
+
+.glass-form {
+  background: #12121298;
+  backdrop-filter: none;
+  border-radius: 5px;
+  padding: 40px;
+  width: 90%;
+  max-width: 650px;
+}
+
+
+@layer components {
+  .bg-login-screen {
+    background-image: url('../assets/LoginWallpaper.jpg');
+    @apply bg-cover bg-center bg-no-repeat;
+  }
+}
