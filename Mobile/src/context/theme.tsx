@@ -2,6 +2,7 @@ import { createContext, useContext, type PropsWithChildren } from 'react';
 import { StyleSheet } from 'react-native';
 
 const colors = {
+	gold:'#C59958',
 	background: '#121212',
 	surface: '#1A1A1A',
 	surfaceElevated: '#1C1C1C',
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
 	screen: { flex: 1, backgroundColor: colors.background },
 	content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
 	brandMark: { alignItems: 'center', marginBottom: 18 },
-	logo: { height: 145, width: 180 },
+	logo: { height: 217, width: 400 },
 	formCard: { backgroundColor: colors.surfaceMuted, borderColor: colors.border, borderRadius: 6, borderWidth: 1, padding: 24 },
 	eyebrow: { color: colors.primary, fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
 	title: { color: colors.text, fontSize: 25, fontWeight: '700', textAlign: 'center' },
