@@ -1,122 +1,89 @@
-import { Link } from "expo-router";
-import { Image, Pressable, SafeAreaView, Text, View } from "react-native";
+import { Link } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
-import { useTheme } from "../../src/context/theme";
+import { Navbar } from '../../src/components/navbar';
+import { useTheme } from '../../src/context/theme';
 
-const logo = require("../../src/assets/images/logo.png");
+const logo = require('../../src/assets/images/logo.png');
+const cars = [
+  { name: 'Porsche 911 GT3R', image: require('../../src/assets/images/Porsche911GT3R.png'), slogan: 'NASCIDO PARA VENCER.' },
+  { name: 'Lamborghini Urus SE', image: require('../../src/assets/images/LamborghiniUrusSE.png'), slogan: 'CONQUISTE QUALQUER CAMINHO.' },
+  { name: 'McLaren 720S', image: require('../../src/assets/images/McLaren720s.png'), slogan: 'VELOCIDADE EM ESTADO DE ARTE.' },
+  { name: 'Bugatti Chiron', image: require('../../src/assets/images/BuggatiReside.png'), slogan: 'PERFORMANCE SEM LIMITES.' },
+  { name: 'Mercedes-Benz 300SL', image: require('../../src/assets/images/MercedesBenz300SL1954.png'), slogan: 'BELEZA ETERNA. ENGENHARIA LENDÁRIA.' },
+];
+const reviews = [
+  { name: 'Aitom Donatoni', car: 'McLaren 750S', image: require('../../src/assets/images/imgMcLaren750s.jpg'), text: 'Uma obra-prima da engenharia. A precisão na entrega e o atendimento personalizado refletem o verdadeiro padrão da marca.' },
+  { name: 'Fernando Consolin', car: 'Lamborghini Urus SE', image: require('../../src/assets/images/imgUrusSE.jpg'), text: 'A harmonia perfeita entre robustez e sofisticação. Superou todas as minhas expectativas em performance e conforto.' },
+  { name: 'Hiago Nascimento', car: 'Porsche 911 GT3R', image: require('../../src/assets/images/imgPorsche911.jpg'), text: 'Um ícone que dispensa apresentações. O processo de aquisição foi conduzido com máxima discrição e profissionalismo.' },
+];
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
+  const { styles } = useTheme();
+  const { width } = useWindowDimensions();
+  const carouselRef = useRef<ScrollView>(null);
+  const [activeCar, setActiveCar] = useState(0);
+  const cardWidth = Math.min(width - 48, 420);
+  const selectCar = (index: number) => {
+    setActiveCar(index);
+    carouselRef.current?.scrollTo({ x: index * (cardWidth + 14), animated: true });
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "space-between",
-          paddingHorizontal: 24,
-          paddingVertical: 28,
-        }}
-      >
-        <View style={{ alignItems: "center" }}>
-          <Image
-            source={logo}
-            style={{ height: 112, width: 240 }}
-            resizeMode="contain"
-          />
-          <View
-            style={{
-              backgroundColor: colors.primary,
-              height: 2,
-              marginTop: 20,
-              width: 42,
-            }}
-          />
+    <SafeAreaView style={styles.homeScreen}>
+      <Navbar />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.homeHeader}>
+          <Image source={logo} style={styles.homeLogo} resizeMode="contain" />
+          <Text style={styles.homeHeaderMeta}>EXCLUSIVIDADE EM MOVIMENTO</Text>
         </View>
-
-        <View style={{ alignItems: "center", marginTop: -32 }}>
-          <Text
-            style={{
-              color: colors.primary,
-              fontSize: 11,
-              fontWeight: "700",
-              letterSpacing: 3,
-              marginBottom: 14,
-            }}
-          >
-            PERFORMANCE & ELEGÂNCIA
-          </Text>
-          <Text
-            style={{
-              color: colors.text,
-              fontSize: 34,
-              fontWeight: "700",
-              lineHeight: 42,
-              textAlign: "center",
-            }}
-          >
-            Seu próximo carro começa aqui.
-          </Text>
-          <Text
-            style={{
-              color: colors.textMuted,
-              fontSize: 15,
-              lineHeight: 23,
-              marginTop: 16,
-              maxWidth: 310,
-              textAlign: "center",
-            }}
-          >
-            Encontre veículos selecionados e viva uma experiência premium do seu
-            jeito.
-          </Text>
+        <View style={styles.homeIntro}>
+          <Text style={styles.homeEyebrow}>COLEÇÃO PRIME</Text>
+          <Text style={styles.homeHeading}>Encontre sua próxima obra-prima</Text>
+          <Text style={styles.homeDescription}>Veículos selecionados para quem reconhece a excelência em cada detalhe.</Text>
         </View>
-
-        <View style={{ alignItems: "center" }}>
-          <Link href="/(auth)/login" asChild>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                {
-                  alignItems: "center",
-                  borderColor: colors.border,
-                  borderRadius: 4,
-                  borderWidth: 1,
-                  height: 54,
-                  justifyContent: "center",
-                },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text
-                style={{
-                  color: colors.text,
-                  fontSize: 17,
-                  fontWeight: "700",
-                  letterSpacing: 1,
-                  backgroundColor:colors.gold,
-                  borderRadius: 5,
-                  padding: 10
-                }}
-              >
-                INICIAR SESSÃO
-              </Text>
-            </Pressable>
-          </Link>
-          <View></View>
-        </View>
-        <Text
-          style={{
-            color: colors.textMuted,
-            fontSize: 11,
-            letterSpacing: 1,
-            marginTop: 8,
-            textAlign: "center",
-          }}
+        <ScrollView
+          ref={carouselRef}
+          contentContainerStyle={styles.homeCarousel}
+          horizontal
+          onMomentumScrollEnd={(event) => setActiveCar(Math.round(event.nativeEvent.contentOffset.x / (cardWidth + 14)))}
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={cardWidth + 14}
         >
-          PRIME MOTORS • ALTO PADRÃO EM CADA DETALHE
-        </Text>
-      </View>
+          {cars.map((car, index) => (
+            <View key={car.name} style={[styles.homeCarCard, { width: cardWidth }, index === activeCar && styles.homeCarCardActive]}>
+              <Text style={styles.homeCarName}>{car.name}</Text>
+              <Text style={styles.homeCarSlogan}>{car.slogan}</Text>
+              <Image source={car.image} style={styles.homeCarImage} resizeMode="contain" />
+              <Link href="/(app)/explorar" asChild>
+                <Pressable style={({ pressed }) => [styles.homeOutlineButton, pressed && styles.homePressed]}>
+                  <Text style={styles.homeOutlineText}>VER VEÍCULOS  ↓</Text>
+                </Pressable>
+              </Link>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.homePagination}>
+          {cars.map((car, index) => <Pressable accessibilityLabel={`Selecionar ${car.name}`} key={car.name} onPress={() => selectCar(index)} style={[styles.homePaginationDot, index === activeCar && styles.homePaginationDotActive]} />)}
+        </View>
+        <View style={styles.homeReviews}>
+          <Text style={styles.homeEyebrow}>DEPOIMENTOS</Text>
+          <Text style={styles.homeReviewHeading}>A experiência de quem escolheu a excelência</Text>
+          <ScrollView contentContainerStyle={styles.homeReviewList} horizontal showsHorizontalScrollIndicator={false}>
+            {reviews.map((review) => (
+              <View key={review.name} style={styles.homeReviewCard}>
+                <Image source={review.image} style={styles.homeReviewImage} />
+                <Text style={styles.homeReviewText}>{review.text}</Text>
+                <View style={styles.homeReviewFooter}>
+                  <Text style={styles.homeReviewer}>{review.name}</Text>
+                  <Text style={styles.homeReviewCar}>{review.car}  ★ 10/10</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
