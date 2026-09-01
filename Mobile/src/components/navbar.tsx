@@ -15,21 +15,34 @@ export function Navbar() {
   const { colors, styles } = useTheme();
 
   return (
-    <View style={[styles.navContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
       {items.map((item, index) => (
         <Link href={item.href} asChild key={item.label}>
           <Pressable
             accessibilityRole="button"
-            className="items-center min-w-[54px]"
-            style={({ pressed }) => [{ opacity: pressed ? 0.65 : 1 }]}
+            style={({ pressed }) => [
+              styles.item,
+              pressed && styles.pressed,
+            ]}
           >
-            <View
-              className="mb-1.5 h-[5px] w-[5px] rounded-[3px]"
-              style={{ backgroundColor: index === 0 ? colors.primary : 'transparent' }}
-            />
             <Text
-              className="text-[10px] font-bold tracking-[0.4px]"
-              style={{ color: index === 0 ? colors.primary : colors.textMuted }}
+              style={[
+                styles.label,
+                {
+                  color:
+                    index === 0
+                      ? colors.primary
+                      : colors.textMuted,
+                },
+              ]}
             >
               {item.label}
             </Text>
@@ -40,3 +53,28 @@ export function Navbar() {
   );
 }
 
+const styles = StyleSheet.create({
+  container: {
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+  },
+
+  item: {
+    alignItems: 'center',
+    minWidth: 54,
+    paddingVertical: 10,
+  },
+
+  label: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+
+  pressed: {
+    opacity: 0.65,
+  },
+});
