@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '../context/theme';
 
@@ -12,7 +12,7 @@ const items = [
 ];
 
 export function Navbar() {
-  const { colors } = useTheme();
+  const { colors, styles } = useTheme();
 
   return (
     <View

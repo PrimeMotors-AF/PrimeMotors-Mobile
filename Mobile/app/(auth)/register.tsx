@@ -17,7 +17,7 @@ type FormErrors = Partial<Record<'name' | 'cpf' | 'email' | 'password' | 'confir
 
 export default function RegisterScreen() {
 	const router = useRouter();
-	const { colors, styles } = useTheme();
+	const { colors } = useTheme();
 	const [form, setForm] = useState({ name: '', cpf: '', email: '', password: '', confirmPassword: '', number: '', cep: '' });
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -53,19 +53,30 @@ export default function RegisterScreen() {
 	};
 
 	const field = (name: keyof typeof form, label: string, placeholder: string, keyboardType?: 'default' | 'email-address' | 'phone-pad') => (
-		<View style={styles.field}>
-			<Text style={styles.fieldLabel}>{label}</Text>
-			<TextInput autoCapitalize={name === 'email' ? 'none' : 'words'} autoCorrect={false} keyboardType={keyboardType} onChangeText={(value) => updateField(name, value)} placeholder={placeholder} placeholderTextColor={colors.placeholder} style={styles.registerInput} value={form[name]} />
-			{errors[name] ? <Text style={styles.registerError}>{errors[name]}</Text> : null}
+		<View className="mb-[14px]">
+			<Text className="mb-[7px] text-[11px] font-bold tracking-[1px] text-[#C9C2B8]">{label}</Text>
+			<TextInput
+				autoCapitalize={name === 'email' ? 'none' : 'words'}
+				autoCorrect={false}
+				keyboardType={keyboardType}
+				onChangeText={(value) => updateField(name, value)}
+				placeholder={placeholder}
+				placeholderTextColor={colors.placeholder}
+				className="h-[48px] rounded-[4px] border border-[#3D3933] bg-[#F4F1EB] px-[14px] text-[16px] text-[#171615]"
+				value={form[name]}
+			/>
+			{errors[name] ? <Text className="mt-[5px] text-[12px] text-[#ED8B8B]">{errors[name]}</Text> : null}
 		</View>
 	);
 
 	return (
-		<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
-			<ScrollView contentContainerStyle={styles.registerContent} keyboardShouldPersistTaps="handled">
-				<View style={styles.formCard}>
-					<Text style={styles.eyebrow}>PRIME MOTORS</Text>
-					<Text style={styles.registerTitle}>Associe-se à <Text style={styles.gold}>Prime Motors</Text></Text>
+		<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-[#121212]">
+			<ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} keyboardShouldPersistTaps="handled">
+				<View className="rounded-[6px] border border-[#3D3933] bg-[#201F1D] p-6">
+					<Text className="mb-2.5 text-center text-[11px] font-bold tracking-[2px] text-[#C59958]">PRIME MOTORS</Text>
+					<Text className="mb-5 text-center text-[22px] font-bold text-[#F8F6F1]">
+						Associe-se à <Text className="text-[#C59958]">Prime Motors</Text>
+					</Text>
 					{field('name', 'NOME COMPLETO', 'Seu nome completo')}
 					{field('cpf', 'CPF', '000.000.000-00')}
 					{field('email', 'EMAIL', 'seu@email.com', 'email-address')}
@@ -73,14 +84,20 @@ export default function RegisterScreen() {
 					{field('cep', 'CEP', '00000-000')}
 					{field('password', 'SENHA', 'Mínimo de 6 caracteres')}
 					{field('confirmPassword', 'CONFIRMAR SENHA', 'Digite sua senha novamente')}
-					<Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptedTerms }} onPress={() => setAcceptedTerms((current) => !current)} style={styles.termsRow}>
-						<View style={[styles.checkbox, acceptedTerms && styles.checkboxSelected]}>{acceptedTerms ? <Text style={styles.checkboxMark}>✓</Text> : null}</View>
-						<Text style={styles.termsText}>Aceito os Termos de Uso e a Política de Privacidade.</Text>
+					<Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptedTerms }} onPress={() => setAcceptedTerms((current) => !current)} className="mt-1 mb-[22px] flex-row items-center">
+						<View className={`mr-[9px] h-[20px] w-[20px] items-center justify-center rounded-[2px] border ${acceptedTerms ? 'border-[#C59958] bg-[#C59958]' : 'border-[#C9C2B8]'}`}>
+							{acceptedTerms ? <Text className="text-[14px] font-extrabold text-[#171615]">✓</Text> : null}
+						</View>
+						<Text className="flex-1 text-[12px] text-[#C9C2B8]">Aceito os Termos de Uso e a Política de Privacidade.</Text>
 					</Pressable>
-					{errors.terms ? <Text style={styles.registerError}>{errors.terms}</Text> : null}
-					<View style={styles.registerActions}>
-						<Pressable onPress={() => router.replace('/(auth)/login')} style={({ pressed }) => [pressed && styles.pressed]}><Text style={styles.backText}>← Voltar</Text></Pressable>
-						<Pressable accessibilityRole="button" disabled={isLoading} onPress={handleRegister} style={({ pressed }) => [styles.registerButton, pressed && styles.pressed, isLoading && styles.disabled]}>{isLoading ? <ActivityIndicator color={colors.textOnButton} /> : <Text style={styles.registerButtonText}>CONFIRMAR</Text>}</Pressable>
+					{errors.terms ? <Text className="mt-[5px] text-[12px] text-[#ED8B8B]">{errors.terms}</Text> : null}
+					<View className="mt-0.5 flex-row items-center justify-between">
+						<Pressable onPress={() => router.replace('/(auth)/login')} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
+							<Text className="text-[14px] text-[#E8E2D8]">← Voltar</Text>
+						</Pressable>
+						<Pressable accessibilityRole="button" disabled={isLoading} onPress={handleRegister} className="ml-4 h-[50px] flex-1 items-center justify-center rounded-[4px] bg-[#C59958]" style={({ pressed }) => [{ opacity: pressed ? 0.8 : isLoading ? 0.6 : 1 }]}>
+							{isLoading ? <ActivityIndicator color={colors.textOnButton} /> : <Text className="text-[13px] font-extrabold tracking-[1px] text-[#171615]">CONFIRMAR</Text>}
+						</Pressable>
 					</View>
 				</View>
 			</ScrollView>

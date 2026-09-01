@@ -64,7 +64,7 @@ const reviews = [
 ];
 
 export default function HomeScreen() {
-  const { styles } = useTheme();
+  const { styles, logoSizes } = useTheme();
   const { width } = useWindowDimensions();
 
   const carouselRef = useRef<ScrollView>(null);
