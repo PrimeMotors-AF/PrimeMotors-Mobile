@@ -33,8 +33,8 @@ const logoSizes = {
 		height: 170,
 	},
 	nav: {
-		width: 180,
-		height: 62,
+		width: 240,
+		height: 150,
 	},
 } as const;
 

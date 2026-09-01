@@ -64,7 +64,7 @@ export default function HomeScreen() {
         <View className="px-4 pb-3">
           <ScrollView
             ref={carouselRef}
-            contentContainerStyle={{ gap: 14, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 }}
+            contentContainerStyle={{ gap: 14, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12 }}
             horizontal
             onMomentumScrollEnd={(event) => setActiveCar(Math.round(event.nativeEvent.contentOffset.x / (cardWidth + 14)))}
             showsHorizontalScrollIndicator={false}
@@ -117,7 +117,7 @@ export default function HomeScreen() {
           </Text>
 
           <ScrollView
-            contentContainerStyle={{ gap: 14, paddingTop: 20 }}
+            contentContainerStyle={{ gap: 14, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12  }}
             horizontal
             showsHorizontalScrollIndicator={false}
           >
