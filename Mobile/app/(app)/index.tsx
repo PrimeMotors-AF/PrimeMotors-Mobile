@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   Image,
@@ -9,8 +9,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-
-import { useTheme } from "../../src/context/theme";
 
 const logo = require("../../src/assets/images/logo.png");
 
@@ -64,7 +62,7 @@ const reviews = [
 ];
 
 export default function HomeScreen() {
-  const { styles, logoSizes } = useTheme();
+  const router = useRouter();
   const { width } = useWindowDimensions();
 
   const carouselRef = useRef<ScrollView>(null);
@@ -83,47 +81,41 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.homeScreen}>
-
-
-      {/* CONTEÚDO DA PÁGINA */}
+    <SafeAreaView className="flex-1 bg-[#121212]">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        {/* Header */}
-        <View style={styles.homeHeader}>
+        <View className="items-center px-5 pb-3 pt-6">
           <Image
             source={logo}
-            style={styles.homeLogo}
+            className="mb-1 h-[150px] w-[220px]"
             resizeMode="contain"
           />
 
-          <Text style={styles.homeHeaderMeta}>
+          <Text className="text-[11px] font-bold tracking-[2px] text-[#A9A49B] uppercase">
             EXCLUSIVIDADE EM MOVIMENTO
           </Text>
         </View>
 
-        {/* Introdução */}
-        <View style={styles.homeIntro}>
-          <Text style={styles.homeEyebrow}>
+        <View className="px-5 py-2">
+          <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958] uppercase">
             COLEÇÃO PRIME
           </Text>
 
-          <Text style={styles.homeHeading}>
+          <Text className="mb-2 text-[32px] font-bold leading-[38px] text-[#F8F6F1]">
             Encontre sua próxima obra-prima
           </Text>
 
-          <Text style={styles.homeDescription}>
+          <Text className="text-[15px] leading-[22px] text-[#C9C2B8]">
             Veículos selecionados para quem reconhece a excelência em cada
             detalhe.
           </Text>
         </View>
 
-        {/* Carrossel de carros */}
         <ScrollView
           ref={carouselRef}
-          contentContainerStyle={styles.homeCarousel}
+          contentContainerStyle={{ alignItems: "center", paddingHorizontal: 12, paddingVertical: 12 }}
           horizontal
           onMomentumScrollEnd={(event) =>
             setActiveCar(
@@ -139,94 +131,88 @@ export default function HomeScreen() {
           {cars.map((car, index) => (
             <View
               key={car.name}
-              style={[
-                styles.homeCarCard,
-                { width: cardWidth },
-                index === activeCar &&
-                  styles.homeCarCardActive,
-              ]}
+              className={[
+                "mr-[14px] rounded-[16px] border border-[#3D3933] bg-[#1A1A1A] p-[18px]",
+                index === activeCar && "border-[#C59958] shadow-lg",
+              ].join(" ")}
+              style={{ width: cardWidth, minHeight: 480 }}
             >
-              <Text style={styles.homeCarName}>
+              <Text className="mb-1.5 text-[22px] font-bold text-[#F8F6F1]">
                 {car.name}
               </Text>
 
-              <Text style={styles.homeCarSlogan}>
+              <Text className="mb-3 text-[11px] font-bold tracking-[1.2px] text-[#C59958] uppercase">
                 {car.slogan}
               </Text>
 
               <Image
                 source={car.image}
-                style={styles.homeCarImage}
+                className="mb-3 h-[190px] w-full"
                 resizeMode="contain"
               />
 
-              <Link href="/(app)/explorar" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.homeOutlineButton,
-                    pressed && styles.homePressed,
-                  ]}
-                >
-                  <Text style={styles.homeOutlineText}>
-                    VER VEÍCULOS ↓
-                  </Text>
-                </Pressable>
-              </Link>
+              <Pressable
+                onPress={() => router.push("/(app)/explorar")}
+                className="items-center justify-center rounded-full border border-[#3D3933] px-4 py-3"
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text className="text-[11px] font-bold tracking-[1.8px] text-[#F8F6F1]">
+                  VER VEÍCULOS ↓
+                </Text>
+              </Pressable>
             </View>
           ))}
         </ScrollView>
 
-        {/* Paginação */}
-        <View style={styles.homePagination}>
+        <View className="flex-row items-center justify-center py-2">
           {cars.map((car, index) => (
             <Pressable
               accessibilityLabel={`Selecionar ${car.name}`}
               key={car.name}
               onPress={() => selectCar(index)}
-              style={[
-                styles.homePaginationDot,
-                index === activeCar &&
-                  styles.homePaginationDotActive,
-              ]}
+              className={[
+                "mx-1 h-2 rounded-full bg-[#3D3933]",
+                index === activeCar && "w-[26px] bg-[#C59958]",
+              ].join(" ")}
+              style={index === activeCar ? undefined : { width: 8 }}
             />
           ))}
         </View>
 
-        {/* Depoimentos */}
-        <View style={styles.homeReviews}>
-          <Text style={styles.homeEyebrow}>
+        <View className="px-5 pb-6 pt-5">
+          <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958] uppercase">
             DEPOIMENTOS
           </Text>
 
-          <Text style={styles.homeReviewHeading}>
+          <Text className="mb-3 text-[24px] font-bold leading-[30px] text-[#F8F6F1]">
             A experiência de quem escolheu a excelência
           </Text>
 
           <ScrollView
-            contentContainerStyle={styles.homeReviewList}
+            contentContainerStyle={{ paddingVertical: 8 }}
             horizontal
             showsHorizontalScrollIndicator={false}
           >
             {reviews.map((review) => (
               <View
                 key={review.name}
-                style={styles.homeReviewCard}
+                className="mr-3 w-[280px] rounded-[14px] border border-[#3D3933] bg-[#1C1C1C] p-[14px]"
               >
                 <Image
                   source={review.image}
-                  style={styles.homeReviewImage}
+                  className="mb-3 h-[180px] w-full rounded-[12px]"
                 />
 
-                <Text style={styles.homeReviewText}>
+                <Text className="mb-4 text-[13px] leading-[20px] text-[#C9C2B8]">
                   {review.text}
                 </Text>
 
-                <View style={styles.homeReviewFooter}>
-                  <Text style={styles.homeReviewer}>
+                <View className="border-t border-[#3D3933] pt-3">
+                  <Text className="mb-1 text-[14px] font-bold text-[#F8F6F1]">
                     {review.name}
                   </Text>
 
-                  <Text style={styles.homeReviewCar}>
+                  <Text className="text-[12px] font-semibold text-[#C59958]">
                     {review.car} ★ 10/10
                   </Text>
                 </View>
@@ -234,7 +220,6 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );

@@ -17,7 +17,7 @@ export function Navbar() {
   return (
     <View
       style={[
-        styles.container,
+        styles.navContainer,
         {
           backgroundColor: colors.surface,
           borderBottomColor: colors.border,
@@ -29,13 +29,13 @@ export function Navbar() {
           <Pressable
             accessibilityRole="button"
             style={({ pressed }) => [
-              styles.item,
-              pressed && styles.pressed,
+              styles.navItem,
+              pressed && styles.navPressed,
             ]}
           >
             <Text
               style={[
-                styles.label,
+                styles.navLabel,
                 {
                   color:
                     index === 0
@@ -52,29 +52,3 @@ export function Navbar() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 15,
-  },
-
-  item: {
-    alignItems: 'center',
-    minWidth: 54,
-    paddingVertical: 10,
-  },
-
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-
-  pressed: {
-    opacity: 0.65,
-  },
-});
