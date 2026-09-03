@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export interface Review {
   id: number;
   name: string;
@@ -154,3 +156,11 @@ export interface TestDriveModalProps {
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
+
+export type InputProps = {
+  texto?: string;
+  onClick?: () => void;
+  className?: string;
+  type?: "button" | "submit" | "reset";
+  children?: ReactNode;
+};
