@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import {
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   useWindowDimensions,
@@ -69,7 +68,12 @@ export default function HomeScreen() {
 
   const [activeCar, setActiveCar] = useState(0);
 
-  const cardWidth = Math.min(width - 48, 420);
+  /*
+   * Mantém o card responsivo:
+   * - Em telas pequenas: largura da tela - 40
+   * - Em telas maiores: máximo de 420px
+   */
+  const cardWidth = Math.min(width - 40, 420);
 
   const selectCar = (index: number) => {
     setActiveCar(index);
@@ -81,147 +85,209 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#121212]">
+    <ScrollView
+      className="flex-1 bg-[#121212]"
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingBottom: 30,
+      }}
+    >
+      {/* ===================================================== */}
+      {/* LOGO / HERO */}
+      {/* ===================================================== */}
+
+      <View className="items-center px-5 pb-4 pt-4">
+        <Image
+          source={logo}
+          style={{
+            width: 160,
+            height: 100,
+            marginBottom: 2,
+          }}
+          resizeMode="contain"
+        />
+
+        <Text className="text-center text-[10px] font-bold tracking-[2px] text-[#A9A49B]">
+          EXCLUSIVIDADE EM MOVIMENTO
+        </Text>
+      </View>
+
+      {/* ===================================================== */}
+      {/* INTRODUÇÃO */}
+      {/* ===================================================== */}
+
+      <View className="px-5 pb-5 pt-3">
+        <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958]">
+          COLEÇÃO PRIME
+        </Text>
+
+        <Text className="mb-3 text-[30px] font-bold leading-[36px] text-[#F8F6F1]">
+          Encontre sua próxima obra-prima
+        </Text>
+
+        <Text className="text-[15px] leading-[22px] text-[#C9C2B8]">
+          Veículos selecionados para quem reconhece a excelência em cada
+          detalhe.
+        </Text>
+      </View>
+
+      {/* ===================================================== */}
+      {/* CARROS */}
+      {/* ===================================================== */}
+
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        ref={carouselRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={cardWidth + 14}
+        decelerationRate="fast"
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingVertical: 12,
+        }}
+        onMomentumScrollEnd={(event) => {
+          const index = Math.round(
+            event.nativeEvent.contentOffset.x / (cardWidth + 14),
+          );
+
+          setActiveCar(Math.max(0, Math.min(index, cars.length - 1)));
+        }}
       >
-        <View className="items-center px-5 pb-3 pt-6">
-          <Image
-            source={logo}
-            className="mb-1 h-[150px] w-[220px]"
-            resizeMode="contain"
-          />
+        {cars.map((car, index) => (
+          <View
+            key={car.name}
+            style={{
+              width: cardWidth,
+              minHeight: 450,
+              marginRight: 14,
+            }}
+            className={[
+              "rounded-[16px] border bg-[#1A1A1A] p-[18px]",
+              index === activeCar
+                ? "border-[#C59958]"
+                : "border-[#3D3933]",
+            ].join(" ")}
+          >
+            {/* Nome */}
+            <Text className="mb-2 text-[22px] font-bold text-[#F8F6F1]">
+              {car.name}
+            </Text>
 
-          <Text className="text-[11px] font-bold tracking-[2px] text-[#A9A49B] uppercase">
-            EXCLUSIVIDADE EM MOVIMENTO
-          </Text>
-        </View>
+            {/* Slogan */}
+            <Text className="mb-3 text-[11px] font-bold tracking-[1.2px] text-[#C59958]">
+              {car.slogan}
+            </Text>
 
-        <View className="px-5 py-2">
-          <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958] uppercase">
-            COLEÇÃO PRIME
-          </Text>
-
-          <Text className="mb-2 text-[32px] font-bold leading-[38px] text-[#F8F6F1]">
-            Encontre sua próxima obra-prima
-          </Text>
-
-          <Text className="text-[15px] leading-[22px] text-[#C9C2B8]">
-            Veículos selecionados para quem reconhece a excelência em cada
-            detalhe.
-          </Text>
-        </View>
-
-        <ScrollView
-          ref={carouselRef}
-          contentContainerStyle={{ alignItems: "center", paddingHorizontal: 12, paddingVertical: 12 }}
-          horizontal
-          onMomentumScrollEnd={(event) =>
-            setActiveCar(
-              Math.round(
-                event.nativeEvent.contentOffset.x /
-                  (cardWidth + 14),
-              ),
-            )
-          }
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={cardWidth + 14}
-        >
-          {cars.map((car, index) => (
-            <View
-              key={car.name}
-              className={[
-                "mr-[14px] rounded-[16px] border border-[#3D3933] bg-[#1A1A1A] p-[18px]",
-                index === activeCar && "border-[#C59958] shadow-lg",
-              ].join(" ")}
-              style={{ width: cardWidth, minHeight: 480 }}
-            >
-              <Text className="mb-1.5 text-[22px] font-bold text-[#F8F6F1]">
-                {car.name}
-              </Text>
-
-              <Text className="mb-3 text-[11px] font-bold tracking-[1.2px] text-[#C59958] uppercase">
-                {car.slogan}
-              </Text>
-
+            {/* Imagem do carro */}
+            <View className="items-center justify-center">
               <Image
                 source={car.image}
-                className="mb-3 h-[190px] w-full"
+                style={{
+                  width: "100%",
+                  height: 190,
+                }}
                 resizeMode="contain"
               />
+            </View>
 
-              <Pressable
-                onPress={() => router.push("/(app)/explorar")}
-                className="items-center justify-center rounded-full border border-[#3D3933] px-4 py-3"
-                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-              >
-                <Text className="text-[11px] font-bold tracking-[1.8px] text-[#F8F6F1]">
-                  VER VEÍCULOS ↓
+            {/* Botão */}
+            <Pressable
+              onPress={() => router.push("/(app)/explorar")}
+              className="mt-3 items-center justify-center rounded-full border border-[#3D3933] px-4 py-3"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text className="text-center text-[11px] font-bold tracking-[1.8px] text-[#F8F6F1]">
+                VER VEÍCULOS ↓
+              </Text>
+            </Pressable>
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* ===================================================== */}
+      {/* INDICADORES DO CARROSSEL */}
+      {/* ===================================================== */}
+
+      <View className="flex-row items-center justify-center py-3">
+        {cars.map((car, index) => (
+          <Pressable
+            key={car.name}
+            accessibilityLabel={`Selecionar ${car.name}`}
+            onPress={() => selectCar(index)}
+            style={{
+              width: index === activeCar ? 26 : 8,
+              height: 8,
+              marginHorizontal: 4,
+              borderRadius: 999,
+              backgroundColor:
+                index === activeCar ? "#C59958" : "#3D3933",
+            }}
+          />
+        ))}
+      </View>
+
+      {/* ===================================================== */}
+      {/* DEPOIMENTOS */}
+      {/* ===================================================== */}
+
+      <View className="px-5 pb-6 pt-7">
+        <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958]">
+          DEPOIMENTOS
+        </Text>
+
+        <Text className="mb-4 text-[24px] font-bold leading-[30px] text-[#F8F6F1]">
+          A experiência de quem escolheu a excelência
+        </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingVertical: 8,
+          }}
+        >
+          {reviews.map((review) => (
+            <View
+              key={review.name}
+              style={{
+                width: Math.min(width - 60, 280),
+                marginRight: 12,
+              }}
+              className="rounded-[14px] border border-[#3D3933] bg-[#1C1C1C] p-[14px]"
+            >
+              {/* Foto */}
+              <Image
+                source={review.image}
+                style={{
+                  width: "100%",
+                  height: 180,
+                  borderRadius: 12,
+                  marginBottom: 12,
+                }}
+                resizeMode="cover"
+              />
+
+              {/* Texto */}
+              <Text className="mb-4 text-[13px] leading-[20px] text-[#C9C2B8]">
+                {review.text}
+              </Text>
+
+              {/* Autor */}
+              <View className="border-t border-[#3D3933] pt-3">
+                <Text className="mb-1 text-[14px] font-bold text-[#F8F6F1]">
+                  {review.name}
                 </Text>
-              </Pressable>
+
+                <Text className="text-[12px] font-semibold text-[#C59958]">
+                  {review.car} ★ 10/10
+                </Text>
+              </View>
             </View>
           ))}
         </ScrollView>
-
-        <View className="flex-row items-center justify-center py-2">
-          {cars.map((car, index) => (
-            <Pressable
-              accessibilityLabel={`Selecionar ${car.name}`}
-              key={car.name}
-              onPress={() => selectCar(index)}
-              className={[
-                "mx-1 h-2 rounded-full bg-[#3D3933]",
-                index === activeCar && "w-[26px] bg-[#C59958]",
-              ].join(" ")}
-              style={index === activeCar ? undefined : { width: 8 }}
-            />
-          ))}
-        </View>
-
-        <View className="px-5 pb-6 pt-5">
-          <Text className="mb-2 text-[11px] font-bold tracking-[2px] text-[#C59958] uppercase">
-            DEPOIMENTOS
-          </Text>
-
-          <Text className="mb-3 text-[24px] font-bold leading-[30px] text-[#F8F6F1]">
-            A experiência de quem escolheu a excelência
-          </Text>
-
-          <ScrollView
-            contentContainerStyle={{ paddingVertical: 8 }}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {reviews.map((review) => (
-              <View
-                key={review.name}
-                className="mr-3 w-[280px] rounded-[14px] border border-[#3D3933] bg-[#1C1C1C] p-[14px]"
-              >
-                <Image
-                  source={review.image}
-                  className="mb-3 h-[180px] w-full rounded-[12px]"
-                />
-
-                <Text className="mb-4 text-[13px] leading-[20px] text-[#C9C2B8]">
-                  {review.text}
-                </Text>
-
-                <View className="border-t border-[#3D3933] pt-3">
-                  <Text className="mb-1 text-[14px] font-bold text-[#F8F6F1]">
-                    {review.name}
-                  </Text>
-
-                  <Text className="text-[12px] font-semibold text-[#C59958]">
-                    {review.car} ★ 10/10
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
-

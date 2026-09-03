@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useTheme } from "../../src/context/theme";
+import { useTheme } from "../context/theme";
 
 const developers = [
   {

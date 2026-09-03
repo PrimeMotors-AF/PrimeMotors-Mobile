@@ -1,7 +1,7 @@
 import { Image, Pressable, Text, View } from "react-native";
 import { Link } from "expo-router";
 
-import type { CardCarProps } from "../../../../src/types/types";
+import type { CardCarProps } from "../../types/types";
 
 interface CardCarroProps {
   carro: CardCarProps;

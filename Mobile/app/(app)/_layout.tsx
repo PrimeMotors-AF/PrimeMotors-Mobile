@@ -1,21 +1,19 @@
-import { Stack } from "expo-router";
+import "../../global.css";
+
+import { Slot } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Navbar } from "../../src/components/navbar";
-import Footer from "./footer";
+import { Navbar } from "@/components/navbar";
+import Footer from "@/components/footer";
 
-export default function AppLayout() {
+export default function RootLayout() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <Navbar />
 
       <View style={styles.content}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
+        <Slot />
       </View>
 
       <Footer />
@@ -26,7 +24,7 @@ export default function AppLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#121212",
   },
 
   content: {

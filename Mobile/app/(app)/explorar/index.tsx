@@ -6,9 +6,9 @@ import {
   View,
 } from "react-native";
 
-import Carrossel from "./components/CarroselMarca";
-import CardCarro from "./components/CardCarros";
-import SideBar from "./components/SideBar";
+import Carrossel from "@/components/explorar/CarroselMarca";
+import CardCarro from "@/components/explorar/CardCarros";
+import SideBar from "@/components/explorar/SideBar";
 
 import type { CardCarProps } from "../../../src/types/types";
 import { favoriteService } from "../../../src/services/favoriteService";
