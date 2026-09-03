@@ -1,69 +1,69 @@
-import { Link } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from '../context/theme';
-
-const items = [
-  { label: 'Início', href: '/' as const },
-  { label: 'Explorar', href: '/explorar' as const },
-  { label: 'Garagem', href: '/Garagem/' as const },
-  { label: 'Favoritos', href: '/favoritos/' as const },
-  { label: 'Perfil', href: '/perfil/' as const },
-];
+import { useTheme } from "../context/theme";
 
 export function Navbar() {
-  const { colors, styles } = useTheme();
-  const [isOpen, setIsOpen] = useState(false);
+  const { colors } = useTheme();
+  
 
   return (
-    <View style={{ backgroundColor: colors.surface, borderBottomColor: colors.border, borderBottomWidth: 1 }}>
-      <View style={[styles.navContainer, { paddingVertical: 25, justifyContent: 'flex-end' }]}>
-        <Pressable
-          accessibilityLabel={isOpen ? 'Fechar menu' : 'Abrir menu'}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: isOpen }}
-          onPress={() => setIsOpen((open) => !open)}
-          style={({ pressed }) => [
-            styles.navItem,
-            { minWidth: 48, paddingVertical: 8 },
-            pressed && styles.navPressed,
-          ]}
-        >
-          <View style={{ gap: 5, marginLeft:-5 }}>
-            <View style={{ width: 30, height: 4, backgroundColor: colors.text }} />
-            <View style={{ width: 30, height: 4, backgroundColor: colors.text }} />
-            <View style={{ width: 30, height: 4, backgroundColor: colors.text }} />
-          </View>
-        </Pressable>
-      </View>
-
-      {isOpen ? (
-        <View style={{ borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10,alignItems:'center' }}>
-          {items.map((item, index) => (
-            <Link href={item.href} asChild key={item.label}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setIsOpen(false)}
-                style={({ pressed }) => [
-                  styles.navItem,
-                  { alignItems: 'flex-start', paddingVertical: 14 },
-                  pressed && styles.navPressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.navLabel,
-                    { color: index === 0 ? colors.primary : colors.textMuted },
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            </Link>
-          ))}
-        </View>
-      ) : null}
-    </View>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors?.primary ?? "#10B981",
+        tabBarInactiveTintColor: colors?.textMuted ?? "#6B7280",
+        tabBarStyle: {
+          backgroundColor: colors?.surface ?? "#121212",
+          borderTopColor: colors?.border ?? "#27272A",
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Início",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="explorar"
+        options={{
+          title: "Explorar",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="compass-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Garagem"
+        options={{
+          title: "Garagem",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Favoritos"
+        options={{
+          title: "Favoritos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Perfil"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
