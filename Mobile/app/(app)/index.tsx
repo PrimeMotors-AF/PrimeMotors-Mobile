@@ -92,26 +92,7 @@ export default function HomeScreen() {
         paddingBottom: 30,
       }}
     >
-      {/* ===================================================== */}
-      {/* LOGO / HERO */}
-      {/* ===================================================== */}
-
-      <View className="items-center px-5 pb-4 pt-4">
-        <Image
-          source={logo}
-          style={{
-            width: 160,
-            height: 100,
-            marginBottom: 2,
-          }}
-          resizeMode="contain"
-        />
-
-        <Text className="text-center text-[10px] font-bold tracking-[2px] text-[#A9A49B]">
-          EXCLUSIVIDADE EM MOVIMENTO
-        </Text>
-      </View>
-
+ 
       {/* ===================================================== */}
       {/* INTRODUÇÃO */}
       {/* ===================================================== */}
@@ -139,11 +120,11 @@ export default function HomeScreen() {
         ref={carouselRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={cardWidth + 14}
+        snapToInterval={cardWidth + 15}
         decelerationRate="fast"
         contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingVertical: 12,
+          paddingHorizontal: 26,
+          paddingVertical: 14,
         }}
         onMomentumScrollEnd={(event) => {
           const index = Math.round(
@@ -159,7 +140,7 @@ export default function HomeScreen() {
             style={{
               width: cardWidth,
               minHeight: 450,
-              marginRight: 14,
+              marginRight: 15,
             }}
             className={[
               "rounded-[16px] border bg-[#1A1A1A] p-[18px]",
@@ -192,7 +173,7 @@ export default function HomeScreen() {
 
             {/* Botão */}
             <Pressable
-              onPress={() => router.push("/(app)/explorar")}
+              onPress={() => router.push("/explorar")}
               className="mt-3 items-center justify-center rounded-full border border-[#3D3933] px-4 py-3"
               style={({ pressed }) => ({
                 opacity: pressed ? 0.7 : 1,

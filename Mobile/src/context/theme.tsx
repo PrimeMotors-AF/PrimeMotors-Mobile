@@ -246,9 +246,10 @@ const styles = StyleSheet.create({
 		paddingVertical: 10,
 	},
 	navLabel: {
-		fontSize: 10,
-		fontWeight: '700',
+		fontSize: 15,
+		fontWeight: '600',
 		letterSpacing: 0.4,
+		marginVertical:5
 	},
 	navPressed: {
 		opacity: 0.65,

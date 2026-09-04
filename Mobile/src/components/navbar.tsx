@@ -1,54 +1,77 @@
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from '../context/theme';
-
-const items = [
-  { label: 'Início', href: '/(app)' as const },
-  { label: 'Explorar', href: '/(app)/explorar' as const },
-  { label: 'Garagem', href: '/(app)/garagem/1' as const },
-  { label: 'Favoritos', href: '/(app)/favoritos/1' as const },
-  { label: 'Perfil', href: '/(app)/perfil/1' as const },
-];
+import { useTheme } from "../context/theme"; // Ajuste o caminho do import se necessário
 
 export function Navbar() {
-  const { colors, styles } = useTheme();
+  const { colors } = useTheme();
 
   return (
-    <View
-      style={[
-        styles.navContainer,
-        {
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors?.primary ?? "#10B981",
+        tabBarInactiveTintColor: colors?.textMuted ?? "#6B7280",
+        tabBarStyle: {
+          backgroundColor: colors?.surface ?? "#121212",
+          borderTopColor: colors?.border ?? "#27272A",
         },
-      ]}
+      }}
     >
-      {items.map((item, index) => (
-        <Link href={item.href} asChild key={item.label}>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.navItem,
-              pressed && styles.navPressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.navLabel,
-                {
-                  color:
-                    index === 0
-                      ? colors.primary
-                      : colors.textMuted,
-                },
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        </Link>
-      ))}
-    </View>
+      {/* 1º Início: Se o arquivo estiver direto em app/index.tsx */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Início",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 2º Explorar: Pasta app/explorar/index.tsx */}
+      <Tabs.Screen
+        name="explorar/index"
+        options={{
+          title: "Explorar",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="compass-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 3º Perfil: Pasta app/perfil/index.tsx */}
+      <Tabs.Screen
+        name="perfil/index"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 4º Garagem: Pasta app/garagem/index.tsx */}
+      <Tabs.Screen
+        name="garagem/index"
+        options={{
+          title: "Garagem",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 5º Favoritos: Pasta app/favoritos/index.tsx */}
+      <Tabs.Screen
+        name="favoritos/index"
+        options={{
+          title: "Favoritos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
