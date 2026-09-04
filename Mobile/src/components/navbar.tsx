@@ -5,7 +5,6 @@ import { useTheme } from "../context/theme";
 
 export function Navbar() {
   const { colors } = useTheme();
-  
 
   return (
     <Tabs
@@ -28,39 +27,31 @@ export function Navbar() {
           ),
         }}
       />
+ 
       <Tabs.Screen
-        name="explorar"
-        options={{
-          title: "Explorar",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="Garagem"
+        name="garagem"
         options={{
           title: "Garagem",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="car-outline" size={size} color={color} />
+            <Ionicons name="car" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="Favoritos"
+        name="favoritos"
         options={{
           title: "Favoritos",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart-outline" size={size} color={color} />
+            <Ionicons name="heart" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="Perfil"
+        name="perfil"
         options={{
           title: "Perfil",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="person" size={size} color={color} />
           ),
         }}
       />

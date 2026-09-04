@@ -173,7 +173,7 @@ export default function HomeScreen() {
 
             {/* Botão */}
             <Pressable
-              onPress={() => router.push("/(app)/explorar")}
+              onPress={() => router.push("/explorar")}
               className="mt-3 items-center justify-center rounded-full border border-[#3D3933] px-4 py-3"
               style={({ pressed }) => ({
                 opacity: pressed ? 0.7 : 1,
