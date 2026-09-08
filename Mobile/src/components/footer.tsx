@@ -30,6 +30,7 @@ export default function Footer() {
         {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          marginTop:30,
         },
       ]}
     >
@@ -86,7 +87,8 @@ const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 20,
+    paddingBottom:40
   },
 
   developers: {

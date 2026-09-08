@@ -15,6 +15,10 @@ export function Navbar() {
         tabBarStyle: {
           backgroundColor: colors?.surface ?? "#121212",
           borderTopColor: colors?.border ?? "#27272A",
+          height: 70,
+        },
+        tabBarIconStyle: {
+          marginTop: 3,
         },
       }}
     >
@@ -40,20 +44,11 @@ export function Navbar() {
         }}
       />
 
-      {/* 3º Perfil: Pasta app/perfil/index.tsx */}
-      <Tabs.Screen
-        name="perfil/index"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      {/* 3º Perfil: Pasta app/Perfil/index.tsx */}
 
-      {/* 4º Garagem: Pasta app/garagem/index.tsx */}
+      {/* 4º Garagem: Pasta app/Garagem/index.tsx */}
       <Tabs.Screen
-        name="garagem/index"
+        name="Garagem/index"
         options={{
           title: "Garagem",
           tabBarIcon: ({ color, size }) => (
@@ -62,9 +57,9 @@ export function Navbar() {
         }}
       />
 
-      {/* 5º Favoritos: Pasta app/favoritos/index.tsx */}
+      {/* 5º Favoritos: Pasta app/Favoritos/index.tsx */}
       <Tabs.Screen
-        name="favoritos/index"
+        name="Favoritos/index"
         options={{
           title: "Favoritos",
           tabBarIcon: ({ color, size }) => (
@@ -72,6 +67,15 @@ export function Navbar() {
           ),
         }}
       />
+  <Tabs.Screen
+    name="Perfil/index"
+    options={{
+      title: "Perfil",
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name="person-outline" size={size} color={color} />
+      ),
+    }}
+  />
     </Tabs>
   );
 }

@@ -1,3 +1,4 @@
+import Footer from "@/components/footer";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -89,10 +90,10 @@ export default function HomeScreen() {
       className="flex-1 bg-[#121212]"
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        paddingBottom: 30,
+        paddingBottom: 0,
+        paddingTop: 30,
       }}
     >
- 
       {/* ===================================================== */}
       {/* INTRODUÇÃO */}
       {/* ===================================================== */}
@@ -144,9 +145,7 @@ export default function HomeScreen() {
             }}
             className={[
               "rounded-[16px] border bg-[#1A1A1A] p-[18px]",
-              index === activeCar
-                ? "border-[#C59958]"
-                : "border-[#3D3933]",
+              index === activeCar ? "border-[#C59958]" : "border-[#3D3933]",
             ].join(" ")}
           >
             {/* Nome */}
@@ -202,8 +201,7 @@ export default function HomeScreen() {
               height: 8,
               marginHorizontal: 4,
               borderRadius: 999,
-              backgroundColor:
-                index === activeCar ? "#C59958" : "#3D3933",
+              backgroundColor: index === activeCar ? "#C59958" : "#3D3933",
             }}
           />
         ))}
@@ -269,6 +267,9 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
       </View>
+
+      <Footer />
+      
     </ScrollView>
   );
 }
