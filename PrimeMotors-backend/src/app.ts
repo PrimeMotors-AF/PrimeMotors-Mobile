@@ -19,7 +19,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost", "https://localhost"],
+    origin: ["http://localhost:5173", "http://localhost", "https://localhost", "http://localhost:8081"],
     credentials: true,
   }),
 );

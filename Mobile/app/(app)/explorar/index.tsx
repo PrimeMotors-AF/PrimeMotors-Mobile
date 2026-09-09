@@ -8,8 +8,7 @@ import {
 
 import Carrossel from "@/components/explorar/CarroselMarca";
 import CardCarro from "@/components/explorar/CardCarros";
-import SideBar from "@/components/explorar/SideBar";
-
+import { getCars } from "../../../src/services/carService";
 import type { CardCarProps } from "../../../src/types/types";
 import { favoriteService } from "../../../src/services/favoriteService";
 import { authStorage } from "../../../src/utils/userLocalStorage";
@@ -36,10 +35,9 @@ export default function Explorar() {
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        const response = await fetch("/cars");
-        const data = await response.json();
-
+        const data = await getCars();
         setCars(Array.isArray(data) ? data : []);
+
       } catch (error) {
         console.error("Erro ao buscar carros:", error);
         setCars([]);
@@ -107,16 +105,12 @@ export default function Explorar() {
       showsVerticalScrollIndicator={false}
     >
       {/* CARROSSEL DE MARCAS */}
-      <Carrossel
+     <Carrossel
         onChangeMarca={setMarcaSelecionada}
-      />
+      /> 
 
       {/* ÁREA DE FILTROS E CARROS */}
       <View style={styles.content}>
-        <SideBar
-          onCategoryChange={handleCategoryToggle}
-          selectedCategories={categoriasSelecionadas}
-        />
 
         <View style={styles.carsContainer}>
           {carsFiltrados.map((carro) => (
