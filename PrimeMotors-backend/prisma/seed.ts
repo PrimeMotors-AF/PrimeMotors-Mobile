@@ -1,5 +1,4 @@
 import { PrismaClient, Prisma, FuelType } from "@prisma/client";
-import process from "node:process";
 
 const prisma = new PrismaClient();
 
