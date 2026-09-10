@@ -24,6 +24,16 @@ export default function RegisterScreen() {
 	const [isLoading, setIsLoading] = useState(false);
 
 	const updateField = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }));
+	const updateMaskedField = (field: keyof typeof form, value: string) => {
+		const maskedValue = field === 'cpf'
+			? maskCpf(value)
+			: field === 'cep'
+				? maskCep(value)
+				: field === 'number'
+					? maskPhone(value)
+					: value;
+		updateField(field, maskedValue);
+	};
 
 	const validate = () => {
 		const nextErrors: FormErrors = {};
@@ -59,7 +69,7 @@ export default function RegisterScreen() {
 				autoCapitalize={name === 'email' ? 'none' : 'words'}
 				autoCorrect={false}
 				keyboardType={keyboardType}
-				onChangeText={(value) => updateField(name, value)}
+				onChangeText={(value) => updateMaskedField(name, value)}
 				placeholder={placeholder}
 				placeholderTextColor={colors.placeholder}
 				className="h-[48px] rounded-[4px] border border-[#3D3933] bg-[#F4F1EB] px-[14px] text-[16px] text-[#171615]"

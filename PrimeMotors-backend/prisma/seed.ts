@@ -73,7 +73,7 @@ async function main() {
         "https://res.cloudinary.com/dchrzl7ao/image/upload/v1788877743/lambo3_g4erzq.jpg"
       ]
     },
-    /*
+    
     {
       name: "Lamborghini Aventador",
       model: "Aventador SVJ",
@@ -618,7 +618,7 @@ async function main() {
       images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189721/2021-Mercedes-Benz-S-Class-014-1600_esxwug.jpg",
         "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189726/2021-Mercedes-Benz-S-Class-015-1600_osmekf.jpg",
         "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189729/2021-Mercedes-Benz-S-Class-016-1600_mdj4rh.jpg"]
-    }*/
+    }
   ];
 
   // 🔁 Loop para criar todos os carros
