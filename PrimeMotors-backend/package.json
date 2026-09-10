@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/AitomD/BackEnd2026#readme",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "6.19.3",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@prisma/sdk": "^3.15.2",
+    "@prisma/sdk": "^2.28.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
@@ -55,7 +55,7 @@
     "eslint": "^10.5.0",
     "husky": "^9.1.7",
     "jest": "^30.3.0",
-    "prisma": "^5.22.0",
+    "prisma": "6.19.3",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.9",
     "ts-node-dev": "^2.0.0",
