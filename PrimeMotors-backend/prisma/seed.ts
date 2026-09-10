@@ -427,5 +427,4 @@ main()
   .catch((e) => {
     console.error(e);
     prisma.$disconnect();
-    process.exit(1);
   });

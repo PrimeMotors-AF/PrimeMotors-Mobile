@@ -157,7 +157,7 @@ export default function CardCarro({
 
         {/* Detalhes */}
         <Link
-          href={`/explorar/${carro.id}`}
+          href={`/detalhes/${carro.id}`}
           asChild
         >
           <Pressable
