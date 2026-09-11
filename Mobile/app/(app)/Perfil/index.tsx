@@ -62,11 +62,11 @@ export default function Perfil() {
       const updated = editMode === "avatar"
         ? await userService.updateAvatar(user.id, value.trim())
         : await userService.updateProfile(user.id, {
-            [editMode === "password" ? "password" : "number"]: value.trim(),
             name: user.name,
             cpf: user.cpf,
             cep: user.cep,
-            number: user.number,
+            number: editMode === "phone" ? value.trim() : user.number,
+            ...(editMode === "password" ? { password: value.trim() } : {}),
           });
       setUser(updated);
       await authStorage.saveUser(updated);
@@ -95,24 +95,15 @@ export default function Perfil() {
     }
   };
 
-  const deleteProfile = () => {
-    if (!user) return;
-    Alert.alert("Desativar perfil", "Deseja desativar seu perfil?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Confirmar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await userService.deleteProfile(user.id);
-            await authStorage.removeSession();
-            router.replace("/(auth)/login");
-          } catch (error) {
-            Alert.alert("Erro", error instanceof Error ? error.message : "Erro ao desativar perfil.");
-          }
-        },
-      },
-    ]);
+  const logout = async () => {
+    setIsSaving(true);
+    try {
+      await authStorage.removeSession();
+      router.replace("/(auth)/login");
+    } catch (error) {
+      Alert.alert("Erro", error instanceof Error ? error.message : "Erro ao sair da conta.");
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -140,7 +131,7 @@ export default function Perfil() {
             <InfoRow label="TELEFONE" value={user.number} onPress={() => openEditor("phone")} />
           </View>
         </View>
-        <Pressable onPress={deleteProfile} className="mt-4 border border-[#A94343] p-4"><Text className="text-center text-[13px] font-bold tracking-[1px] text-[#ED8B8B]">DESATIVAR PERFIL</Text></Pressable>
+        <Pressable disabled={isSaving} onPress={logout} className="mt-4 border border-[#A94343] p-4"><Text className="text-center text-[13px] font-bold tracking-[1px] text-[#ED8B8B]">{isSaving ? "SAINDO..." : "SAIR DA CONTA"}</Text></Pressable>
       </ScrollView>
 
       <Modal visible={editMode !== null} transparent animationType="fade" onRequestClose={() => setEditMode(null)}>
