@@ -1,12 +1,10 @@
 import { authStorage } from "../utils/userLocalStorage";
 import { AxiosError, create } from "axios";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL =
-	process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+
 
 const api = axios.create({
 	baseURL: API_URL,
@@ -30,11 +28,6 @@ api.interceptors.request.use(async (config) => {
 // AUTH
 // ====================
 
-const api = create({
-	baseURL: API_URL,
-	timeout: 10000,
-	headers: { "Content-Type": "application/json" },
-});
 
 api.interceptors.request.use(async (config) => {
 	const token = await authStorage.getToken();
@@ -44,7 +37,6 @@ api.interceptors.request.use(async (config) => {
 	return config;
 });
 
-export default api;
 
 type LoginCredentials = {
 	email: string;
