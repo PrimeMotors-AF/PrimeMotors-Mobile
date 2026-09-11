@@ -20,10 +20,14 @@ export default function RegisterScreen() {
 	const { colors } = useTheme();
 	const [form, setForm] = useState({ name: '', cpf: '', email: '', password: '', confirmPassword: '', number: '', cep: '' });
 	const [errors, setErrors] = useState<FormErrors>({});
+	const [registerError, setRegisterError] = useState('');
 	const [acceptedTerms, setAcceptedTerms] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 
-	const updateField = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }));
+	const updateField = (field: keyof typeof form, value: string) => {
+		setForm((current) => ({ ...current, [field]: value }));
+		setRegisterError('');
+	};
 	const updateMaskedField = (field: keyof typeof form, value: string) => {
 		const maskedValue = field === 'cpf'
 			? maskCpf(value)
@@ -37,6 +41,7 @@ export default function RegisterScreen() {
 
 	const validate = () => {
 		const nextErrors: FormErrors = {};
+		setRegisterError('');
 		if (form.name.trim().length < 3) nextErrors.name = 'Informe seu nome completo.';
 		if (onlyDigits(form.cpf).length !== 11) nextErrors.cpf = 'CPF inválido ou incompleto.';
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) nextErrors.email = 'Email inválido.';
@@ -56,7 +61,7 @@ export default function RegisterScreen() {
 			await register({ name: form.name.trim(), email: form.email.trim(), password: form.password, cpf: onlyDigits(form.cpf), cep: onlyDigits(form.cep), number: onlyDigits(form.number) });
 			router.replace('/(auth)/login');
 		} catch (error) {
-			setErrors({ email: error instanceof Error ? error.message : 'Erro ao realizar cadastro.' });
+			setRegisterError(error instanceof Error ? error.message : 'Erro ao realizar cadastro.');
 		} finally {
 			setIsLoading(false);
 		}
@@ -81,6 +86,7 @@ export default function RegisterScreen() {
 
 	return (
 		<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-[#121212]">
+			{registerError ? <Text className="mx-6 mt-6 rounded-[4px] border border-[#8F4545] bg-[#3A2020] p-3 text-center text-[13px] text-[#ED8B8B]">{registerError}</Text> : null}
 			<ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} keyboardShouldPersistTaps="handled">
 				<View className="rounded-[6px] border border-[#3D3933] bg-[#201F1D] p-6">
 					<Text className="mb-2.5 text-center text-[11px] font-bold tracking-[2px] text-[#C59958]">PRIME MOTORS</Text>
