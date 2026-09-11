@@ -2,6 +2,33 @@ import { authStorage } from "../utils/userLocalStorage";
 import { AxiosError, create } from "axios";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const API_URL =
+	process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+
+const api = axios.create({
+	baseURL: API_URL,
+	timeout: 5000,
+	headers: {
+		"Content-Type": "application/json",
+	},
+});
+
+api.interceptors.request.use(async (config) => {
+	const token = await AsyncStorage.getItem("token");
+
+	if (token) {
+		config.headers.Authorization = `Bearer ${token}`;
+	}
+
+	return config;
+});
+
+// ====================
+// AUTH
+// ====================
 
 const api = create({
 	baseURL: API_URL,
@@ -59,7 +86,9 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 	return error instanceof Error ? error.message : fallback;
 };
 
-export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+export async function login(
+	credentials: LoginCredentials
+): Promise<LoginResponse> {
 	try {
 		const { data } = await api.post<LoginResponse>('/auth/login', credentials);
 
@@ -72,7 +101,9 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 	}
 }
 
-export async function register(data: RegisterData): Promise<RegisterResponse> {
+export async function register(
+	data: RegisterData
+): Promise<RegisterResponse> {
 	try {
 		const { data: responseData } = await api.post<RegisterResponse>('/auth/users', data);
 		return responseData;
@@ -80,3 +111,5 @@ export async function register(data: RegisterData): Promise<RegisterResponse> {
 		throw new Error(getErrorMessage(error, 'Não foi possível criar sua conta'));
 	}
 }
+
+export default api;

@@ -163,4 +163,5 @@ export type InputProps = {
   className?: string;
   type?: "button" | "submit" | "reset";
   children?: ReactNode;
+  disabled?: boolean;
 };
