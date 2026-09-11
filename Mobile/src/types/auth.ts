@@ -5,6 +5,7 @@ export interface User {
   cpf: string;
   cep: string;
   number: string;
+  avatarUrl?: string | null;
   password?: string;
 }
 
@@ -16,6 +17,7 @@ export type AuthServiceUser = {
   cpf: string;
   cep: string;
   number: string;
+  avatarUrl?: string | null;
   password?: string;
 };
 

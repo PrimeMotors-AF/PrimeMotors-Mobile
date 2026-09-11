@@ -72,7 +72,43 @@ async function main() {
         "https://res.cloudinary.com/dchrzl7ao/image/upload/v1788877743/lambo3_g4erzq.jpg"
       ]
     },
-
+    
+    {
+      name: "Lamborghini Aventador",
+      model: "Aventador SVJ",
+      value: 5800000,
+      categoryName: "Super Esportivo",
+      brandName: "Lamborghini",
+      espec: { year: 2023, fuel: FuelType.Gasolina, color: "Giallo Orion", transmission: "Automático", engine: "6.5 V12", potency: "770cv", max_speed: "350km/h" },
+      itens: { airbag: true, alarm: true, leather_seat: true, cruise_control: true, abs: true, onBoard_computer: true },
+      images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186723/2013-Lamborghini-Aventador-LP720-4-50-Anniversario-005-1600_csl2jq.jpg"
+        , "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186748/2013-Lamborghini-Aventador-LP720-4-50-Anniversario-003-1600_zitnz7.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186749/2013-Lamborghini-Aventador-LP720-4-50-Anniversario-001-1600_zrkdpl.jpg"]
+    },
+    {
+      name: "Lamborghini Urus",
+      model: "Urus Performante",
+      value: 3900000,
+      categoryName: "SUV",
+      brandName: "Lamborghini",
+      espec: { year: 2024, fuel: FuelType.Gasolina, color: "Arancio Borealis", transmission: "Automático", engine: "4.0 V8 Biturbo", potency: "666cv", max_speed: "306km/h" },
+      itens: { airbag: true, alarm: true, leather_seat: true, cruise_control: true, abs: true, onBoard_computer: true },
+      images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186617/2025-Lamborghini-Urus-SE-001_zqkkah.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186623/2025-Lamborghini-Urus-SE-002_ha5a4z.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186634/2025-Lamborghini-Urus-SE-004_vwedze.jpg"]
+    },
+    {
+      name: "Lamborghini Revuelto",
+      model: "V12 Hybrid",
+      value: 7000000,
+      categoryName: "Super Esportivo",
+      brandName: "Lamborghini",
+      espec: { year: 2024, fuel: FuelType.Hibrido, color: "Viola Pasifae", transmission: "Automático", engine: "6.5 V12 Hybrid", potency: "1015cv", max_speed: "350km/h" },
+      itens: { airbag: true, alarm: true, leather_seat: true, cruise_control: true, abs: true, onBoard_computer: true },
+      images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186901/2026-Novitec-Lamborghini-Revuelto-001-1600_acgplg.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186918/2026-Novitec-Lamborghini-Revuelto-002-1600_uqbj0q.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776186925/2026-Novitec-Lamborghini-Revuelto-003-1600_yqnlhn.jpg"]
+    },
     // Ferrari
     {
       name: "Ferrari 488",
@@ -371,7 +407,31 @@ async function main() {
         "https://res.cloudinary.com/dchrzl7ao/image/upload/v1788978365/mercedez3_ju4xjo.jpg"
       ]
     },
-    
+    {
+      name: "Mercedes-Benz G-Class",
+      model: "G 63 AMG",
+      value: 1900000,
+      categoryName: "SUV",
+      brandName: "Mercedes-Benz",
+      espec: { year: 2025, fuel: FuelType.Gasolina, color: "South Sea Blue", transmission: "Automático", engine: "4.0 V8 Biturbo", potency: "585cv", max_speed: "220km/h" },
+      itens: { airbag: true, alarm: true, leather_seat: true, cruise_control: true, abs: true, onBoard_computer: true },
+      images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189623/2025-Mercedes-AMG-G63-007-1600_p1npxw.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189590/2025-Mercedes-AMG-G63-005-1600_gji1et.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189606/2025-Mercedes-AMG-G63-006-1600_emdw3s.jpg"
+      ]
+    },
+    {
+      name: "Mercedes-Benz S-Class",
+      model: "S 680 Maybach",
+      value: 3000000,
+      categoryName: "Luxo",
+      brandName: "Mercedes-Benz",
+      espec: { year: 2021, fuel: FuelType.Gasolina, color: "Two-tone Silver/Black", transmission: "Automático", engine: "6.0 V12 Biturbo", potency: "612cv", max_speed: "250km/h" },
+      itens: { airbag: true, alarm: true, leather_seat: true, cruise_control: true, abs: true, onBoard_computer: true },
+      images: ["https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189721/2021-Mercedes-Benz-S-Class-014-1600_esxwug.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189726/2021-Mercedes-Benz-S-Class-015-1600_osmekf.jpg",
+        "https://res.cloudinary.com/ddnh19cgy/image/upload/q_auto/f_auto/v1776189729/2021-Mercedes-Benz-S-Class-016-1600_mdj4rh.jpg"]
+    }
   ];
 
   // 🔁 Loop para criar todos os carros

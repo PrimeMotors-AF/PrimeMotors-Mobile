@@ -1,3 +1,7 @@
+import { authStorage } from "../utils/userLocalStorage";
+import { AxiosError, create } from "axios";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -26,14 +30,40 @@ api.interceptors.request.use(async (config) => {
 // AUTH
 // ====================
 
+const api = create({
+	baseURL: API_URL,
+	timeout: 10000,
+	headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use(async (config) => {
+	const token = await authStorage.getToken();
+	if (token) {
+		config.headers.Authorization = `Bearer ${token}`;
+	}
+	return config;
+});
+
+export default api;
+
 type LoginCredentials = {
 	email: string;
 	password: string;
 };
 
 type LoginResponse = {
-	user: Record<string, unknown>;
+	user: UserResponse;
 	token: string;
+};
+
+export type UserResponse = {
+	id: string;
+	name: string;
+	email: string;
+	cpf: string;
+	cep: string;
+	number: string;
+	avatarUrl?: string | null;
 };
 
 export type RegisterData = {
@@ -46,33 +76,28 @@ export type RegisterData = {
 };
 
 type RegisterResponse = {
-	user: Record<string, unknown>;
+	user: UserResponse;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+	if (error instanceof AxiosError) {
+		return error.response?.data?.message ?? fallback;
+	}
+	return error instanceof Error ? error.message : fallback;
 };
 
 export async function login(
 	credentials: LoginCredentials
 ): Promise<LoginResponse> {
 	try {
-		const response = await api.post<LoginResponse>(
-			"/auth/login",
-			credentials
-		);
+		const { data } = await api.post<LoginResponse>('/auth/login', credentials);
 
-		const data = response.data;
-
-		// Salva o token para as próximas requisições
-		await AsyncStorage.setItem("token", data.token);
+		await authStorage.saveToken(data.token);
+		await authStorage.saveUser(data.user);
 
 		return data;
 	} catch (error) {
-		if (axios.isAxiosError(error)) {
-			throw new Error(
-				error.response?.data?.message ??
-					"E-mail ou senha incorretos"
-			);
-		}
-
-		throw new Error("Erro ao conectar com o servidor");
+		throw new Error(getErrorMessage(error, 'E-mail ou senha incorretos'));
 	}
 }
 
@@ -80,21 +105,10 @@ export async function register(
 	data: RegisterData
 ): Promise<RegisterResponse> {
 	try {
-		const response = await api.post<RegisterResponse>(
-			"/auth/users",
-			data
-		);
-
-		return response.data;
+		const { data: responseData } = await api.post<RegisterResponse>('/auth/users', data);
+		return responseData;
 	} catch (error) {
-		if (axios.isAxiosError(error)) {
-			throw new Error(
-				error.response?.data?.message ??
-					"Não foi possível criar sua conta"
-			);
-		}
-
-		throw new Error("Erro ao conectar com o servidor");
+		throw new Error(getErrorMessage(error, 'Não foi possível criar sua conta'));
 	}
 }
 
