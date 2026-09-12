@@ -8,7 +8,7 @@ export function Navbar() {
 
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors?.primary ?? "#10B981",
         tabBarInactiveTintColor: colors?.textMuted ?? "#6B7280",
@@ -20,7 +20,8 @@ export function Navbar() {
         tabBarIconStyle: {
           marginTop: 3,
         },
-      }}
+        href: /\[.*\]/.test(route.name) ? null : undefined, // esconde qualquer rota dinâmica
+      })}
     >
       {/* 1º Início: Se o arquivo estiver direto em app/index.tsx */}
       <Tabs.Screen
@@ -67,15 +68,19 @@ export function Navbar() {
           ),
         }}
       />
-  <Tabs.Screen
-    name="Perfil/index"
-    options={{
-      title: "Perfil",
-      tabBarIcon: ({ color, size }) => (
-        <Ionicons name="person-outline" size={size} color={color} />
-      ),
-    }}
-  />
+      <Tabs.Screen
+        name="Perfil/index"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="detalhes/[id]"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

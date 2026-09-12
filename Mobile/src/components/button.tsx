@@ -77,6 +77,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  content: {                    // NOVO
+    width: "100%",
+    alignItems: "center",
+  },
   pressed: {
     backgroundColor: "rgba(55, 65, 81, 0.1)",
   },
@@ -86,5 +90,6 @@ const styles = StyleSheet.create({
   text: {
     color: "#111827",
     fontWeight: "600",
+    textAlign: "center",        // NOVO
   },
 });

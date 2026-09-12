@@ -6,23 +6,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 
-const api = axios.create({
+const api = create({
 	baseURL: API_URL,
-	timeout: 5000,
-	headers: {
-		"Content-Type": "application/json",
-	},
+	timeout: 10000,
+	headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use(async (config) => {
-	const token = await AsyncStorage.getItem("token");
-
+	const token = await authStorage.getToken();
 	if (token) {
 		config.headers.Authorization = `Bearer ${token}`;
 	}
-
 	return config;
 });
+
+export default api;
 
 // ====================
 // AUTH
@@ -103,5 +101,3 @@ export async function register(
 		throw new Error(getErrorMessage(error, 'Não foi possível criar sua conta'));
 	}
 }
-
-export default api;

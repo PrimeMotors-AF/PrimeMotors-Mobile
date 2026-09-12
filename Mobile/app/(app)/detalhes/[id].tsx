@@ -182,7 +182,10 @@ export default function ProdutoCard() {
                 setIsTestDriveModalOpen(true);
               }}
             >
-              <Feather name="calendar" size={14} /> Agendar Test Drive
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Feather name="calendar" size={14} />
+                <Text>Agendar Test Drive</Text>
+              </View>
             </Button>
           </View>
         </View>
@@ -215,27 +218,6 @@ export default function ProdutoCard() {
           </View>
         </View>
       </ScrollView>
-
-      {/* Barra de ações fixa */}
-      <View style={styles.actionBar}>
-        <Button
-          style={[styles.secondaryButton, { flex: 1 }]}
-          onPress={() => {
-            if (!user?.id) return irParaLogin();
-            setIsTestDriveModalOpen(true);
-          }}
-        >
-          <Feather name="calendar" size={14} /> Test Drive
-        </Button>
-        <Button
-          texto="Iniciar Proposta"
-          style={[styles.primaryButton, { flex: 1, marginTop: 0 }]}
-          onPress={() => {
-            if (!user?.id) return irParaLogin();
-            setIsModalOpen(true);
-          }}
-        />
-      </View>
 
       {/* Modais */}
       {isModalOpen && (
