@@ -25,6 +25,7 @@ export default function Perfil() {
   const { colors } = useTheme();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [value, setValue] = useState("");
@@ -40,6 +41,13 @@ export default function Perfil() {
       setUser(profile);
       await authStorage.saveUser(profile);
     } catch (error) {
+      const status = error instanceof Error && "status" in error ? error.status : undefined;
+      if (status === 401) {
+        await authStorage.removeSession();
+        router.replace("/(auth)/login");
+        return;
+      }
+      setLoadError(error instanceof Error ? error.message : "Não foi possível carregar seu perfil.");
       Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível carregar seu perfil.");
     } finally {
       setIsLoading(false);
@@ -109,7 +117,18 @@ export default function Perfil() {
   if (isLoading) {
     return <View className="flex-1 items-center justify-center bg-[#121212]"><ActivityIndicator color={colors.primary} /></View>;
   }
-  if (!user) return null;
+  if (!user) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#121212] px-6">
+        <Text className="mb-4 text-center text-[16px] text-[#F8F6F1]">
+          {loadError ?? "Não foi possível carregar seu perfil."}
+        </Text>
+        <Pressable onPress={() => void loadProfile()} className="bg-[#C59958] px-5 py-3">
+          <Text className="font-bold text-[#171615]">TENTAR NOVAMENTE</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   const modalTitle = editMode === "password" ? "SEGURANÇA" : editMode === "avatar" ? "ATUALIZAR FOTO" : "CONTATO";
   return (
