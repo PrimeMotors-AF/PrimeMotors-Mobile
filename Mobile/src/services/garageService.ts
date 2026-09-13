@@ -1,4 +1,4 @@
-import type { GarageProposalPayload } from "../types/types";
+import type { GarageProposal, GarageProposalPayload } from "../types/types";
 import api from "./api";
 
 export interface UpdateProposalPayload {
@@ -30,13 +30,23 @@ function extractErrorMessage(error: unknown, fallback: string): string {
 const garageService = {
   getUserProposals: async (userId: string) => {
     try {
-      const response = await api.get(`/Garage/${userId}`);
+      const response = await api.get(`/garage/${userId}`);
       const data = response.data;
+      const proposals = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.proposals)
+          ? data.proposals
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
 
-      if (Array.isArray(data)) return data;
-      if (Array.isArray(data?.proposals)) return data.proposals;
-      if (Array.isArray(data?.data)) return data.data;
-      return [];
+      return proposals.map((proposal: GarageProposal) => ({
+        ...proposal,
+        offeredValue: Number(proposal.offeredValue),
+        date_offer: proposal.date_offer
+          ? new Date(proposal.date_offer).toISOString()
+          : undefined,
+      })) as GarageProposal[];
     } catch (error) {
       throw new Error(
         extractErrorMessage(error, "Não foi possível carregar as propostas."),
@@ -46,7 +56,7 @@ const garageService = {
 
   sendCarProposal: async (payload: GarageProposalPayload) => {
     try {
-      const response = await api.post("/Garage/proposals", payload);
+      const response = await api.post("/garage/proposals", payload);
       return response.data;
     } catch (error) {
       throw new Error(
@@ -60,7 +70,7 @@ const garageService = {
     payload: UpdateProposalPayload,
   ) => {
     try {
-      const response = await api.put(`/Garage/${proposalId}`, payload);
+      const response = await api.put(`/garage/${proposalId}`, payload);
       return response.data;
     } catch (error) {
       throw new Error(
@@ -71,7 +81,7 @@ const garageService = {
 
   deleteCarProposal: async (proposalId: string) => {
     try {
-      const response = await api.delete(`/Garage/${proposalId}`);
+      const response = await api.delete(`/garage/${proposalId}`);
       return response.data;
     } catch (error) {
       throw new Error(

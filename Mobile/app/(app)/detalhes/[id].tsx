@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   View,
@@ -12,9 +12,9 @@ import {
 import { Feather } from "@expo/vector-icons";
 
 import Notification from "@/components/detalhes/notification";
-import { AuthContext } from "@/context/authContext";
 import api from "@/services/api";
 import type { CardCarProps } from "../../../src/types/types";
+import { authStorage } from "../../../src/utils/userLocalStorage";
 import Button from "@/components/button";
 import ProposalModal from "@/components/detalhes/proposalModal";
 import SpecDescription from "@/components/detalhes/specDescription";
@@ -23,7 +23,7 @@ import TestDriveModal from "@/components/detalhes/testDriveModal";
 export default function ProdutoCard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useContext(AuthContext);
+  const [user, setUser] = useState<{ id: string } | null>(null);
 
   const [carro, setCarro] = useState<CardCarProps | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,12 @@ export default function ProdutoCard() {
     message: string;
     variant: "success" | "error";
   } | null>(null);
+
+  useEffect(() => {
+    void authStorage.getUser().then((storedUser) => {
+      setUser(storedUser ? { id: storedUser.id } : null);
+    });
+  }, []);
 
   useEffect(() => {
     async function fetchCarro() {
@@ -61,7 +67,7 @@ export default function ProdutoCard() {
     return () => clearTimeout(timer);
   }, [notification]);
 
-  const irParaLogin = () => router.push("/Login");
+  const irParaLogin = () => router.push("/(auth)/login");
 
   if (loading)
     return (

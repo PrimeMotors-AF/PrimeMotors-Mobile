@@ -38,7 +38,7 @@ export default function ProposalModal({
     try {
       await garageService.sendCarProposal({
         offeredValue: parseFloat(offeredValue),
-        message,
+        message: message.trim(),
         carId,
         userId,
       });
