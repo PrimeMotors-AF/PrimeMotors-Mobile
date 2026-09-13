@@ -81,6 +81,10 @@ export function Navbar() {
         name="detalhes/[id]"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="TestDrive/index"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }
