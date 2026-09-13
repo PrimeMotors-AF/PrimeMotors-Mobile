@@ -150,6 +150,9 @@ export default function Perfil() {
             <InfoRow label="TELEFONE" value={user.number} onPress={() => openEditor("phone")} />
           </View>
         </View>
+        <Pressable onPress={() => router.push("/(app)/TestDrive/" as never)} className="mt-4 border border-[#3D3933] bg-[#1C1C1C] p-4">
+          <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#C59958]">MEUS TEST DRIVES</Text>
+        </Pressable>
         <Pressable disabled={isSaving} onPress={logout} className="mt-4 border border-[#A94343] p-4"><Text className="text-center text-[13px] font-bold tracking-[1px] text-[#ED8B8B]">{isSaving ? "SAINDO..." : "SAIR DA CONTA"}</Text></Pressable>
       </ScrollView>
 
