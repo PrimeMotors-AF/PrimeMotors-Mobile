@@ -27,7 +27,11 @@ const request = async (path: string, options: RequestInit = {}) => {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(data?.message ?? data?.error ?? "Não foi possível concluir a operação.");
+    const error = new Error(data?.message ?? data?.error ?? "Não foi possível concluir a operação.") as Error & {
+      status?: number;
+    };
+    error.status = response.status;
+    throw error;
   }
 
   return data;

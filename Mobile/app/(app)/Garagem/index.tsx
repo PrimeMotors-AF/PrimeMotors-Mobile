@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -14,19 +13,9 @@ import {
 	View,
 } from "react-native";
 
+import garageService from "../../../src/services/garageService";
+import type { GarageProposal } from "../../../src/types/types";
 import { authStorage } from "../../../src/utils/userLocalStorage";
-
-type GarageProposal = {
-	id: string;
-	name: string;
-	imgUrl?: string | null;
-	offeredValue: number;
-	status: string;
-	message?: string | null;
-	date_offer?: string;
-};
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
 const formatCurrency = (value: number) =>
 	new Intl.NumberFormat("pt-BR", {
@@ -53,24 +42,7 @@ export default function Garagem() {
 	const [offeredValue, setOfferedValue] = useState("");
 	const [message, setMessage] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
-
-	const request = async (path: string, options: RequestInit = {}) => {
-		const token = await AsyncStorage.getItem("token");
-		const response = await fetch(`${API_URL}${path}`, {
-			...options,
-			headers: {
-				"Content-Type": "application/json",
-				...(token ? { Authorization: `Bearer ${token}` } : {}),
-				...options.headers,
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error("Não foi possível acessar sua garagem.");
-		}
-
-		return response.json();
-	};
+	const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
 
 	const loadGarage = useCallback(async (refresh = false) => {
 		if (refresh) setIsRefreshing(true);
@@ -84,8 +56,7 @@ export default function Garagem() {
 				return;
 			}
 
-			const data = await request(`/garage/${user.id}`);
-			setProposals(Array.isArray(data) ? data : data.proposals ?? []);
+			setProposals(await garageService.getUserProposals(user.id));
 		} catch (error) {
 			console.error("Erro ao buscar garagem:", error);
 			setErrorMessage("Não foi possível carregar sua garagem.");
@@ -106,7 +77,10 @@ export default function Garagem() {
 	};
 
 	const closeEditor = () => {
-		if (!isSaving) setActiveProposal(null);
+		if (!isSaving) {
+			setIsConfirmingRemoval(false);
+			setActiveProposal(null);
+		}
 	};
 
 	const saveProposal = async () => {
@@ -118,9 +92,9 @@ export default function Garagem() {
 
 		setIsSaving(true);
 		try {
-			await request(`/garage/${activeProposal.id}`, {
-				method: "PUT",
-				body: JSON.stringify({ offeredValue: parsedValue, message }),
+			await garageService.updateCarProposal(activeProposal.id, {
+				offeredValue: parsedValue,
+				message: message.trim(),
 			});
 			setProposals((current) =>
 				current.map((proposal) =>
@@ -140,31 +114,26 @@ export default function Garagem() {
 	};
 
 	const deleteProposal = () => {
+		if (activeProposal && !isSaving) setIsConfirmingRemoval(true);
+	};
+
+	const confirmDeleteProposal = async () => {
 		if (!activeProposal) return;
 
-		Alert.alert("Excluir proposta", "Deseja excluir esta proposta?", [
-			{ text: "Cancelar", style: "cancel" },
-			{
-				text: "Excluir",
-				style: "destructive",
-				onPress: async () => {
-					setIsSaving(true);
-					try {
-						await request(`/garage/${activeProposal.id}`, { method: "DELETE" });
-						setProposals((current) =>
-							current.filter((proposal) => proposal.id !== activeProposal.id),
-						);
-						setActiveProposal(null);
-						Alert.alert("Sucesso", "Proposta excluída com sucesso.");
-					} catch (error) {
-						console.error("Erro ao excluir proposta:", error);
-						Alert.alert("Erro", "Não foi possível excluir a proposta.");
-					} finally {
-						setIsSaving(false);
-					}
-				},
-			},
-		]);
+		setIsSaving(true);
+		try {
+			await garageService.deleteCarProposal(activeProposal.id);
+			setProposals((current) =>
+				current.filter((proposal) => proposal.id !== activeProposal.id),
+			);
+			setIsConfirmingRemoval(false);
+			setActiveProposal(null);
+		} catch (error) {
+			console.error("Erro ao excluir proposta:", error);
+			setErrorMessage("Não foi possível excluir a proposta. Tente novamente.");
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	if (isLoading) {
@@ -255,9 +224,33 @@ export default function Garagem() {
 						<Pressable disabled={isSaving} onPress={closeEditor} className="mt-3 items-center py-3">
 							<Text className="text-[12px] tracking-[1px] text-[#A9A49B]">CANCELAR</Text>
 						</Pressable>
-						<Pressable disabled={isSaving} onPress={deleteProposal} className="mt-2 items-center py-2">
-							<Text className="text-[11px] font-bold tracking-[1px] text-[#ED8B8B]">EXCLUIR PROPOSTA</Text>
-						</Pressable>
+						{isConfirmingRemoval ? (
+							<View className="mt-2 border border-[#A94343] bg-[#351D1D] p-3">
+								<Text className="mb-3 text-center text-[12px] text-[#ED8B8B]">
+									Deseja excluir esta proposta?
+								</Text>
+								<View className="flex-row gap-2">
+									<Pressable
+										disabled={isSaving}
+										onPress={() => setIsConfirmingRemoval(false)}
+										className="flex-1 items-center border border-[#3D3933] py-3 disabled:opacity-50"
+									>
+										<Text className="text-[11px] font-bold tracking-[1px] text-[#A9A49B]">CANCELAR</Text>
+									</Pressable>
+									<Pressable
+										disabled={isSaving}
+										onPress={() => void confirmDeleteProposal()}
+										className="flex-1 items-center bg-[#A94343] py-3 disabled:opacity-50"
+									>
+										{isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-[11px] font-bold tracking-[1px] text-white">EXCLUIR</Text>}
+									</Pressable>
+								</View>
+							</View>
+						) : (
+							<Pressable disabled={isSaving} onPress={deleteProposal} className="mt-2 items-center py-2">
+								<Text className="text-[11px] font-bold tracking-[1px] text-[#ED8B8B]">EXCLUIR PROPOSTA</Text>
+							</Pressable>
+						)}
 					</View>
 				</View>
 			</Modal>
