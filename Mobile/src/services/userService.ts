@@ -14,10 +14,12 @@ export type ProfileUser = {
 
 const request = async (path: string, options: RequestInit = {}) => {
   const token = await AsyncStorage.getItem("token");
+  const isFormData = options.body instanceof FormData;
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -35,10 +37,15 @@ export const userService = {
   getProfile: (id: string) => request(`/users/${id}`) as Promise<ProfileUser>,
   updateProfile: (id: string, data: Record<string, string>) =>
     request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }) as Promise<ProfileUser>,
-  updateAvatar: (id: string, avatarUrl: string | null) =>
+  uploadAvatar: (id: string, formData: FormData) =>
     request(`/users/${id}/avatar`, {
       method: "PATCH",
-      body: JSON.stringify({ avatarUrl }),
+      body: formData,
+    }) as Promise<ProfileUser>,
+  removeAvatar: (id: string) =>
+    request(`/users/${id}/avatar`, {
+      method: "PATCH",
+      body: JSON.stringify({ avatarUrl: null }),
     }) as Promise<ProfileUser>,
   deleteProfile: (id: string) => request(`/users/${id}`, { method: "DELETE" }),
 };
