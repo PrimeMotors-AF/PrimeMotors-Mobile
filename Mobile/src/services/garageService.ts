@@ -6,7 +6,7 @@ export interface UpdateProposalPayload {
   message: string;
 }
 
-export type ProposalDecision = "Aceita" | "Recusada";
+export type ProposalDecision = "EmAnalise" | "Aceita" | "Recusada";
 
 // Mensagem amigável para exibir quando a chamada falhar (rede instável, timeout, etc.)
 function extractErrorMessage(error: unknown, fallback: string): string {
@@ -45,6 +45,17 @@ const garageService = {
   updateProposalStatus: async (proposalId: string, status: ProposalDecision) => {
     const response = await api.patch(`/garage/admin/proposals/${proposalId}/status`, { status });
     return response.data;
+  },
+
+  deleteAdminProposal: async (proposalId: string) => {
+    try {
+      const response = await api.delete(`/garage/admin/proposals/${proposalId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        extractErrorMessage(error, "Não foi possível excluir a proposta."),
+      );
+    }
   },
 
   getUserProposals: async (userId: string) => {

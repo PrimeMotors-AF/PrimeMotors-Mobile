@@ -127,6 +127,7 @@ model Garage {
   carImageUrl  String?
 
   status ProposalStatus @default(Pendente)
+  adminArchived Boolean @default(false)
 
   carId  String
   userId String

@@ -156,7 +156,7 @@ export const getAllProposals = async (req: Request, res: Response) => {
 
   try {
     const proposals = await prisma.garage.findMany({
-      where: { userId: { not: adminId } },
+      where: { userId: { not: adminId }, adminArchived: false },
       include: {
         car: {
           select: {
@@ -189,7 +189,7 @@ export const getAllProposals = async (req: Request, res: Response) => {
 
 export const updateProposalStatus = async (req: Request, res: Response) => {
   const status = req.body?.status;
-  if (status !== "Aceita" && status !== "Recusada")
+  if (status !== "EmAnalise" && status !== "Aceita" && status !== "Recusada")
     return res.status(400).json({ error: "Status inválido." });
 
   try {
@@ -203,5 +203,26 @@ export const updateProposalStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Proposta não encontrada." });
     console.error(error);
     return res.status(500).json({ error: "Erro ao atualizar status da proposta." });
+  }
+};
+
+export const deleteAdminProposal = async (req: Request, res: Response) => {
+  const proposalId = getId(req, "proposalId");
+  if (!proposalId || proposalId === "undefined")
+    return res.status(400).json({ error: "Identificador da proposta inválido." });
+
+  try {
+    const result = await prisma.garage.updateMany({
+      where: { id: proposalId },
+      data: { adminArchived: true },
+    });
+
+    if (result.count === 0)
+      return res.status(404).json({ error: "Proposta não encontrada." });
+
+    return res.status(200).json({ message: "Proposta excluída com sucesso." });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ error: "Erro ao excluir proposta." });
   }
 };
