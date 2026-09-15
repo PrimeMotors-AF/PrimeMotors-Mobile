@@ -149,3 +149,59 @@ export const getUserProposals = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Erro ao buscar propostas." });
   }
 };
+
+export const getAllProposals = async (req: Request, res: Response) => {
+  const adminId = req.user?.id;
+  if (!adminId) return res.status(401).json({ error: "Não autenticado." });
+
+  try {
+    const proposals = await prisma.garage.findMany({
+      where: { userId: { not: adminId } },
+      include: {
+        car: {
+          select: {
+            name: true,
+            images: { select: { url: true }, orderBy: { id: "asc" }, take: 1 },
+          },
+        },
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { date_offer: "desc" },
+    });
+
+    return res.status(200).json(
+      proposals.map((proposal: any) => ({
+        id: proposal.id,
+        offeredValue: Number(proposal.offeredValue),
+        status: proposal.status,
+        imgUrl: proposal.car?.images[0]?.url ?? null,
+        name: proposal.car?.name ?? "Veículo não identificado",
+        message: proposal.message,
+        date_offer: proposal.date_offer,
+        user: proposal.user,
+      })),
+    );
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erro ao buscar propostas." });
+  }
+};
+
+export const updateProposalStatus = async (req: Request, res: Response) => {
+  const status = req.body?.status;
+  if (status !== "Aceita" && status !== "Recusada")
+    return res.status(400).json({ error: "Status inválido." });
+
+  try {
+    const proposal = await prisma.garage.update({
+      where: { id: getId(req, "proposalId") },
+      data: { status },
+    });
+    return res.status(200).json(proposal);
+  } catch (error: any) {
+    if (error?.code === "P2025")
+      return res.status(404).json({ error: "Proposta não encontrada." });
+    console.error(error);
+    return res.status(500).json({ error: "Erro ao atualizar status da proposta." });
+  }
+};

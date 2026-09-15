@@ -32,6 +32,7 @@ model User {
   password  String
   number    String?
   active    Boolean    @default(true)
+  role      UserRole   @default(user)
   
   avatarUrl String?    @map("avatar_url")
   
@@ -39,6 +40,11 @@ model User {
   favorites Favorite[]
   testDrives TestDrive[]
   @@map("User")
+}
+
+enum UserRole {
+  user
+  admin
 }
 
 model Car {

@@ -6,6 +6,8 @@ export interface UpdateProposalPayload {
   message: string;
 }
 
+export type ProposalDecision = "Aceita" | "Recusada";
+
 // Mensagem amigável para exibir quando a chamada falhar (rede instável, timeout, etc.)
 function extractErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -28,6 +30,23 @@ function extractErrorMessage(error: unknown, fallback: string): string {
 }
 
 const garageService = {
+  getAllProposals: async () => {
+    const response = await api.get("/garage/admin/proposals");
+    const proposals = Array.isArray(response.data) ? response.data : [];
+    return proposals.map((proposal: GarageProposal) => ({
+      ...proposal,
+      offeredValue: Number(proposal.offeredValue),
+      date_offer: proposal.date_offer
+        ? new Date(proposal.date_offer).toISOString()
+        : undefined,
+    })) as GarageProposal[];
+  },
+
+  updateProposalStatus: async (proposalId: string, status: ProposalDecision) => {
+    const response = await api.patch(`/garage/admin/proposals/${proposalId}/status`, { status });
+    return response.data;
+  },
+
   getUserProposals: async (userId: string) => {
     try {
       const response = await api.get(`/garage/${userId}`);
