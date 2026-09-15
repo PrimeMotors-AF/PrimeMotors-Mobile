@@ -10,6 +10,7 @@ export type ProfileUser = {
   cep: string;
   number: string;
   avatarUrl?: string | null;
+  role?: "user" | "admin";
 };
 
 const request = async (path: string, options: RequestInit = {}) => {

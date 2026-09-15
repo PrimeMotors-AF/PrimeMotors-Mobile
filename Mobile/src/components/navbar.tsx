@@ -78,6 +78,10 @@ export function Navbar() {
         }}
       />
       <Tabs.Screen
+        name="AdminPropostas/index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="detalhes/[id]"
         options={{ href: null }}
       />

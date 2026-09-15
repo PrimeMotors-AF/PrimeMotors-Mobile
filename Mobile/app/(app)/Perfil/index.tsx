@@ -39,8 +39,9 @@ export default function Perfil() {
         return;
       }
       const profile = await userService.getProfile(storedUser.id);
-      setUser(profile);
-      await authStorage.saveUser(profile);
+      const profileWithRole = { ...profile, role: profile.role ?? storedUser.role };
+      setUser(profileWithRole);
+      await authStorage.saveUser(profileWithRole);
     } catch (error) {
       const status = error instanceof Error && "status" in error ? error.status : undefined;
       if (status === 401) {
@@ -190,6 +191,11 @@ export default function Perfil() {
         <Pressable onPress={() => router.push("/(app)/TestDrive/" as never)} className="mt-4 border border-[#3D3933] bg-[#1C1C1C] p-4">
           <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#C59958]">MEUS TEST DRIVES</Text>
         </Pressable>
+        {user.role === "admin" ? (
+          <Pressable onPress={() => router.push("/AdminPropostas/" as never)} className="mt-4 border border-[#C59958] bg-[#C59958] p-4">
+            <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#171615]">PROPOSTAS RECEBIDAS</Text>
+          </Pressable>
+        ) : null}
         <Pressable disabled={isSaving} onPress={logout} className="mt-4 border border-[#A94343] p-4"><Text className="text-center text-[13px] font-bold tracking-[1px] text-[#ED8B8B]">{isSaving ? "SAINDO..." : "SAIR DA CONTA"}</Text></Pressable>
       </ScrollView>
 

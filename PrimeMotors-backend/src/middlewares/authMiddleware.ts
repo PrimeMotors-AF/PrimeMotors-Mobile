@@ -18,6 +18,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     const payload = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload & {
       id: string;
       email: string;
+      role?: "user" | "admin";
     };
 
     req.user = payload;

@@ -54,6 +54,7 @@ export type UserResponse = {
 	cep: string;
 	number: string;
 	avatarUrl?: string | null;
+	role?: "user" | "admin";
 };
 
 export type RegisterData = {

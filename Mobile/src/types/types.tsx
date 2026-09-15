@@ -106,6 +106,7 @@ export interface GarageProposal {
   status: GarageProposalStatus;
   message?: string | null;
   date_offer?: string;
+  user?: { id: string; name: string; email: string };
 }
 
 export interface GarageProposalModalProps {
