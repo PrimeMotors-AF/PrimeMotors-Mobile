@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { User } from "../types/auth";
 
 const USER_KEY = "user_data";
+const TOKEN_KEY = "token";
 
 export const authStorage = {
   saveUser: async (user: User) => {
@@ -47,5 +48,15 @@ export const authStorage = {
         error,
       );
     }
+  },
+
+  saveToken: async (token: string) => {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+  },
+
+  getToken: async (): Promise<string | null> => AsyncStorage.getItem(TOKEN_KEY),
+
+  removeSession: async () => {
+    await AsyncStorage.multiRemove([USER_KEY, TOKEN_KEY]);
   },
 };

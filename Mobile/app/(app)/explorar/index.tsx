@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -71,7 +72,7 @@ export default function Explorar() {
     const user = await authStorage.getUser();
 
     if (!user?.id) {
-      console.log(
+      alert(
         "Faça login para adicionar aos favoritos.",
       );
       return;

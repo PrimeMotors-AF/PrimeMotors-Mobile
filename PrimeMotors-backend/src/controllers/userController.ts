@@ -6,6 +6,7 @@ import {
   deactivateUserService,
   updateUserAvatarService,
 } from "../services/userService";
+import { validateAndUploadAvatar } from "../services/avatarUploadService";
 
 export const getUserController = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -88,24 +89,34 @@ export const deleteUserController = async (req: Request, res: Response) => {
 
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
-    //apenas o próprio usuário possa alterar seu avatar
     const tokenUserId = req.user?.id;
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    console.log("USER DO MIDDLEWARE:", req.user);
     if (!tokenUserId || tokenUserId !== id) {
       return res.status(403).json({ message: "Acesso negado." });
     }
 
-    const { avatarUrl } = req.body;
-
-    const user = await updateUserAvatarService(
-      id,
-      avatarUrl ?? null
+    const fileFromRequest = req.file ?? (
+      req.files && !Array.isArray(req.files)
+        ? Object.values(req.files).flat()[0]
+        : undefined
     );
+
+    if (!fileFromRequest) {
+      const { avatarUrl } = req.body ?? {};
+      if (avatarUrl === null || avatarUrl === undefined) {
+        const user = await updateUserAvatarService(id, null);
+        return res.status(200).json(user);
+      }
+      return res.status(400).json({ message: "Nenhum arquivo enviado" });
+    }
+
+    const secureUrl = await validateAndUploadAvatar(fileFromRequest.buffer);
+    const user = await updateUserAvatarService(id, secureUrl);
 
     return res.status(200).json(user);
   } catch (error) {
     console.error("Erro no updateAvatar:", error);
-    return res.status(500).json({ message: "Erro ao atualizar avatar" });
+    const status = error instanceof Error && error.message.includes("inválido") ? 400 : 500;
+    return res.status(status).json({ message: error instanceof Error ? error.message : "Erro ao atualizar avatar" });
   }
 };

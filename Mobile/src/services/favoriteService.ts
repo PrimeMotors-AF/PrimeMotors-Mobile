@@ -12,14 +12,14 @@ export interface FavoriteUpdatePayload {
 
 export const favoriteService = {
   getByUser: async (userId: string) => {
-    const response = await api.get(`/Favorites/${userId}`);
+    const response = await api.get(`/favorites/${userId}`);
 
     return response.data;
   },
 
   toggle: async (payload: FavoriteData) => {
     const response = await api.post(
-      "/Favorites/toggle",
+      "/favorites/toggle",
       payload,
     );
 
@@ -28,7 +28,7 @@ export const favoriteService = {
 
   create: async (payload: FavoriteCreatePayload) => {
     const response = await api.post(
-      "/Favorites",
+      "/favorites",
       payload,
     );
 
@@ -37,7 +37,7 @@ export const favoriteService = {
 
   deleteByCar: async (carId: string) => {
     const response = await api.delete(
-      `/Favorites/${carId}`,
+      `/favorites/${carId}`,
     );
 
     return response.data;
@@ -48,7 +48,7 @@ export const favoriteService = {
     payload: FavoriteUpdatePayload,
   ) => {
     const response = await api.patch(
-      `/Favorites/${favoriteId}/message`,
+      `/favorites/${favoriteId}/message`,
       payload,
     );
 

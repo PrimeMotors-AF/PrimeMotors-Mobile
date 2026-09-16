@@ -1,4 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+
+// Força o carregamento do .env localizado na pasta do backend
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes";
@@ -19,7 +24,13 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost", "https://localhost", "http://localhost:8081"],
+    origin: (origin, callback) => {
+      if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Origem não permitida pelo CORS"));
+    },
     credentials: true,
   }),
 );
@@ -34,4 +45,5 @@ app.use("/garage", userGarageRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/cars", carsRoutes);
 app.use("/test-drives", testDriveRoutes);
+
 export default app;

@@ -88,7 +88,25 @@ export interface GarageProposalPayload {
   offeredValue: number;
   message: string;
   carId: string;
-  userId: string;
+  userId?: string;
+}
+
+export type GarageProposalStatus =
+  | "Pendente"
+  | "EmAnalise"
+  | "Aceita"
+  | "Recusada"
+  | "ContraProposta";
+
+export interface GarageProposal {
+  id: string;
+  name: string;
+  imgUrl?: string | null;
+  offeredValue: number;
+  status: GarageProposalStatus;
+  message?: string | null;
+  date_offer?: string;
+  user?: { id: string; name: string; email: string };
 }
 
 export interface GarageProposalModalProps {
@@ -163,4 +181,5 @@ export type InputProps = {
   className?: string;
   type?: "button" | "submit" | "reset";
   children?: ReactNode;
+  disabled?: boolean;
 };
