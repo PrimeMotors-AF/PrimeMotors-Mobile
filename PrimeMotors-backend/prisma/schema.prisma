@@ -132,7 +132,7 @@ model Garage {
   carId  String
   userId String
 
-  car  Car  @relation(fields: [carId], references: [id])
+  car  Car  @relation(fields: [carId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, carId, status])

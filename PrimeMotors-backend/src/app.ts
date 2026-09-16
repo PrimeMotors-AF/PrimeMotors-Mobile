@@ -1,4 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+
+// Força o carregamento do .env localizado na pasta do backend
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes";
@@ -40,4 +45,5 @@ app.use("/garage", userGarageRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/cars", carsRoutes);
 app.use("/test-drives", testDriveRoutes);
+
 export default app;

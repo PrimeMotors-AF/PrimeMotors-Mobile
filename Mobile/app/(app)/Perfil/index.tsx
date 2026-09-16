@@ -27,6 +27,7 @@ export default function Perfil() {
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [value, setValue] = useState("");
@@ -90,11 +91,14 @@ export default function Perfil() {
 
   const pickAndUploadAvatar = async () => {
     if (!user) return;
+    setAvatarError(null);
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Permissão necessária", "Precisamos acessar suas fotos para trocar o avatar.");
-      return;
+    if (Platform.OS !== "web") {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permissão necessária", "Precisamos acessar suas fotos para trocar o avatar.");
+        return;
+      }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -106,21 +110,80 @@ export default function Perfil() {
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    const formData = new FormData();
-    formData.append("avatar", {
-      uri: asset.uri,
-      name: asset.fileName ?? "avatar.jpg",
-      type: asset.mimeType ?? "image/jpeg",
-    } as any);
+    const mimeType = (asset.mimeType || "").toLowerCase();
+    const fileName = asset.fileName || asset.uri || "";
+    const extension = fileName.split('.').pop()?.toLowerCase() || "";
 
+    const isAllowedType = 
+      ["image/png", "image/jpeg", "image/jpg"].includes(mimeType) ||
+      ["png", "jpg", "jpeg"].includes(extension);
+
+    if (!isAllowedType) {
+      const msg = "Envie apenas imagens PNG ou JPG/JPEG.";
+      setAvatarError(msg);
+      Alert.alert("Arquivo inválido", msg);
+      return;
+    }
+
+    const fileSize = asset.fileSize ?? 0;
+    if (fileSize > 5 * 1024 * 1024) {
+      const msg = "A imagem deve ter no máximo 5MB.";
+      setAvatarError(msg);
+      Alert.alert("Arquivo muito grande", msg);
+      return;
+    }
+
+    const formData = new FormData();
+
+    if (Platform.OS === "web") {
+      try {
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const file = new File([blob], asset.fileName ?? "avatar.png", {
+          type: mimeType || blob.type || "image/png",
+        });
+        formData.append("avatar", file);
+      } catch {
+        const msg = "Não foi possível processar a imagem selecionada.";
+        setAvatarError(msg);
+        Alert.alert("Erro", msg);
+        return;
+      }
+    } else {
+      formData.append("avatar", {
+        uri: asset.uri,
+        name: asset.fileName ?? "avatar.png",
+        type: mimeType || "image/png",
+      } as any);
+    }
+
+    const previousAvatarUrl = user.avatarUrl;
+    setUser((current) => (current ? { ...current, avatarUrl: asset.uri } : current));
     setIsSaving(true);
+
     try {
       const updated = await userService.uploadAvatar(user.id, formData);
       setUser(updated);
       await authStorage.saveUser(updated);
-      Alert.alert("Sucesso", "Foto de perfil atualizada!");
+      
+      if (Platform.OS === "web") {
+        window.alert("Foto de perfil atualizada!");
+      } else {
+        Alert.alert("Sucesso", "Foto de perfil atualizada!");
+      }
     } catch (error) {
-      Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+      setUser((current) => (current ? { ...current, avatarUrl: previousAvatarUrl } : current));
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Não foi possível enviar a imagem.";
+
+      setAvatarError(errorMessage);
+
+      if (Platform.OS === "web") {
+        window.alert(`Erro ao enviar foto: ${errorMessage}`);
+      } else {
+        Alert.alert("Erro ao enviar foto", errorMessage);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -129,6 +192,7 @@ export default function Perfil() {
   const removeAvatar = async () => {
     if (!user) return;
     setIsSaving(true);
+    setAvatarError(null);
     try {
       const updated = await userService.removeAvatar(user.id);
       setUser(updated);
@@ -177,6 +241,12 @@ export default function Perfil() {
           {user.avatarUrl ? <Image source={{ uri: user.avatarUrl }} className="h-36 w-36 rounded-full border border-[#C59958]" /> : <View className="h-36 w-36 items-center justify-center rounded-full border border-[#C59958] bg-[#F4F1EB]"><Text className="text-[13px] text-[#77746F]">Sem foto</Text></View>}
           <Pressable disabled={isSaving} onPress={pickAndUploadAvatar} className="mt-4"><Text className="text-[14px] text-[#C59958]">Trocar foto</Text></Pressable>
           {user.avatarUrl ? <Pressable disabled={isSaving} onPress={removeAvatar} className="mt-3"><Text className="text-[13px] text-[#ED8B8B]">Remover foto</Text></Pressable> : null}
+          
+          {avatarError ? (
+            <Text className="mt-3 text-center text-[13px] font-medium text-[#ED8B8B]">
+              {avatarError}
+            </Text>
+          ) : null}
         </View>
         <View className="border border-[#3D3933] bg-[#121212]">
           <View className="border-b border-[#3D3933] p-5"><Text className="text-[10px] font-bold tracking-[2px] text-[#A9A49B]">USUÁRIO</Text><Text className="mt-1 text-[28px] font-semibold italic text-[#F8F6F1]">{user.name}</Text></View>

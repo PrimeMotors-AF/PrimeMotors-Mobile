@@ -89,16 +89,20 @@ export const deleteUserController = async (req: Request, res: Response) => {
 
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
-    //apenas o próprio usuário possa alterar seu avatar
     const tokenUserId = req.user?.id;
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     if (!tokenUserId || tokenUserId !== id) {
       return res.status(403).json({ message: "Acesso negado." });
     }
 
-    // sem arquivo: mantém a remoção de avatar via { avatarUrl: null }
-    if (!req.file) {
-      const { avatarUrl } = req.body;
+    const fileFromRequest = req.file ?? (
+      req.files && !Array.isArray(req.files)
+        ? Object.values(req.files).flat()[0]
+        : undefined
+    );
+
+    if (!fileFromRequest) {
+      const { avatarUrl } = req.body ?? {};
       if (avatarUrl === null || avatarUrl === undefined) {
         const user = await updateUserAvatarService(id, null);
         return res.status(200).json(user);
@@ -106,8 +110,7 @@ export const updateAvatar = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Nenhum arquivo enviado" });
     }
 
-    // com arquivo: valida e sobe pro Cloudinary
-    const secureUrl = await validateAndUploadAvatar(req.file.buffer);
+    const secureUrl = await validateAndUploadAvatar(fileFromRequest.buffer);
     const user = await updateUserAvatarService(id, secureUrl);
 
     return res.status(200).json(user);
