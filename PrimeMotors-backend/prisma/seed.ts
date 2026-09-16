@@ -3,6 +3,9 @@ import { PrismaClient, Prisma, FuelType } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.testDrive.deleteMany();
+  await prisma.favorite.deleteMany();
+  await prisma.garage.deleteMany();
   await prisma.image.deleteMany();
   await prisma.car.deleteMany();
   await prisma.category.deleteMany();

@@ -88,13 +88,17 @@ export default function Perfil() {
     }
   };
 
+  // ---- ÚNICA FUNÇÃO ALTERADA: pickAndUploadAvatar ----
   const pickAndUploadAvatar = async () => {
     if (!user) return;
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Permissão necessária", "Precisamos acessar suas fotos para trocar o avatar.");
-      return;
+    // No web não existe (nem é necessário) pedir permissão de biblioteca de mídia.
+    if (Platform.OS !== "web") {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permissão necessária", "Precisamos acessar suas fotos para trocar o avatar.");
+        return;
+      }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -106,13 +110,48 @@ export default function Perfil() {
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    const formData = new FormData();
-    formData.append("avatar", {
-      uri: asset.uri,
-      name: asset.fileName ?? "avatar.jpg",
-      type: asset.mimeType ?? "image/jpeg",
-    } as any);
+    const mimeType = (asset.mimeType || "").toLowerCase();
+    const fileSize = asset.fileSize ?? 0;
+    const isAllowedType = ["image/png", "image/jpeg", "image/jpg"].includes(mimeType);
 
+    if (!isAllowedType) {
+      Alert.alert("Arquivo inválido", "Envie apenas imagens PNG ou JPG/JPEG.");
+      return;
+    }
+
+    if (fileSize > 5 * 1024 * 1024) {
+      Alert.alert("Arquivo muito grande", "A imagem deve ter no máximo 5MB.");
+      return;
+    }
+
+    const formData = new FormData();
+
+    if (Platform.OS === "web") {
+      // No web, asset.uri é uma blob: URL. Precisamos buscar esse blob
+      // e transformá-lo em um File real, que é o único tipo aceito
+      // pelo FormData nativo do navegador.
+      try {
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const file = new File([blob], asset.fileName ?? "avatar.jpg", {
+          type: mimeType || blob.type || "image/jpeg",
+        });
+        formData.append("avatar", file);
+      } catch {
+        Alert.alert("Erro", "Não foi possível processar a imagem selecionada.");
+        return;
+      }
+    } else {
+      // Em iOS/Android, o polyfill de FormData do React Native aceita
+      // esse formato { uri, name, type } e monta o multipart corretamente.
+      formData.append("avatar", {
+        uri: asset.uri,
+        name: asset.fileName ?? "avatar.jpg",
+        type: mimeType || "image/jpeg",
+      } as any);
+    }
+
+    setUser((current) => (current ? { ...current, avatarUrl: asset.uri } : current));
     setIsSaving(true);
     try {
       const updated = await userService.uploadAvatar(user.id, formData);
@@ -120,11 +159,13 @@ export default function Perfil() {
       await authStorage.saveUser(updated);
       Alert.alert("Sucesso", "Foto de perfil atualizada!");
     } catch (error) {
+      setUser((current) => (current ? { ...current, avatarUrl: user.avatarUrl ?? null } : current));
       Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
     } finally {
       setIsSaving(false);
     }
   };
+  // ---- FIM DA FUNÇÃO ALTERADA ----
 
   const removeAvatar = async () => {
     if (!user) return;

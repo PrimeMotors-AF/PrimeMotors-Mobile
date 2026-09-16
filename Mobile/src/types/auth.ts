@@ -8,7 +8,6 @@ export interface User {
   avatarUrl?: string | null;
   password?: string;
   role?: "user" | "admin";
-  role?: "user" | "admin";
 }
 
 export type AuthServiceUser = {
