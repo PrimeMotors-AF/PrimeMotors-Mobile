@@ -12,7 +12,7 @@ router.delete('/:id', authMiddleware, deleteUserController);
 
 router.patch(
   '/:id/avatar',
-  //authMiddleware,
+  authMiddleware,
   (req, res, next) => {
     const upload = uploadAvatar.fields([
       { name: 'avatar', maxCount: 1 },
