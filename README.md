@@ -75,5 +75,5 @@ PrimeMotors-Mobile/
 
 | Desenvolvedor | Perfil / Repositório GitHub |
 | :--- | :--- |
-| 👤 **Aitom Henrique Donatoni** | [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seu-usuario-aitom) |
+| 👤 **Aitom Henrique Donatoni** | [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AitomD) |
 | 👤 **Fernando Consolin Rosa** | [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seu-usuario-fernando) |
