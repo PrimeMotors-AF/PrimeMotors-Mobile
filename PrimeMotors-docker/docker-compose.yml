@@ -27,18 +27,20 @@ services:
         condition: service_healthy
     env_file:
       - ../PrimeMotors-backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
     networks:
       - internal
 
-  frontend:
+  mobile:
     build:
-      context: ../PrimeMotors-FrontEnd
-    container_name: frontend
+      context: ../Mobile
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-}
+    container_name: mobile
+    restart: always
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - ./certs:/etc/nginx/ssl:ro   # certificados SSL
     depends_on:
       - backend
     networks:
