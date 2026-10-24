@@ -11,8 +11,10 @@ somente pela rede Docker em `redis:6379`. A aplicação ainda precisa integrar
 esse serviço para cumprir cache e publicação/consumo de eventos.
 
 1. Crie `PrimeMotors-docker/.env` a partir de `.env.example` e informe valores
-   próprios para as variáveis do MySQL. `MYSQL_USER` e `MYSQL_PASSWORD` devem
-   corresponder ao usuário e à senha usados em `DATABASE_URL`.
+   próprios para as variáveis do MySQL. `MYSQL_USER` deve ser um usuário comum
+   (não use `root`), e `MYSQL_USER`/`MYSQL_PASSWORD` devem corresponder às
+   credenciais usadas em `DATABASE_URL`. A senha de root do banco é configurada
+   separadamente por `MYSQL_ROOT_PASSWORD`.
 2. Crie `PrimeMotors-backend/.env` a partir do respectivo `.env.example` para as
    demais configurações do backend. Configure `DATABASE_URL` no `.env desta
    pasta para apontar ao hostname `db` dentro da rede Docker, não a `localhost`;
