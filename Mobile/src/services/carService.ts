@@ -1,4 +1,4 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import { API_URL } from "./apiConfig";
 
 export async function getCars() {
   const response = await fetch(`${API_URL}/cars`);

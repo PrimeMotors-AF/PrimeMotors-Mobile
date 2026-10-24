@@ -13,9 +13,6 @@
     "build": "tsc",
     "lint": "eslint . --ext .ts,.js"
   },
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AitomD/BackEnd2026.git"

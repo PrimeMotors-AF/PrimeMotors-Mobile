@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserProposals = exports.deleteProposal = exports.updateProposal = exports.createProposal = void 0;
+exports.deleteAdminProposal = exports.updateProposalStatus = exports.getAllProposals = exports.getUserProposals = exports.deleteProposal = exports.updateProposal = exports.createProposal = void 0;
 const library_1 = require("@prisma/client/runtime/library");
 const database_1 = __importDefault(require("../config/database"));
 const parsePaginationParam = (value, fallback) => {
@@ -132,4 +132,77 @@ const getUserProposals = async (req, res) => {
     }
 };
 exports.getUserProposals = getUserProposals;
+const getAllProposals = async (req, res) => {
+    const adminId = req.user?.id;
+    if (!adminId)
+        return res.status(401).json({ error: "Não autenticado." });
+    try {
+        const proposals = await database_1.default.garage.findMany({
+            where: { userId: { not: adminId }, adminArchived: false },
+            include: {
+                car: {
+                    select: {
+                        name: true,
+                        images: { select: { url: true }, orderBy: { id: "asc" }, take: 1 },
+                    },
+                },
+                user: { select: { id: true, name: true, email: true } },
+            },
+            orderBy: { date_offer: "desc" },
+        });
+        return res.status(200).json(proposals.map((proposal) => ({
+            id: proposal.id,
+            offeredValue: Number(proposal.offeredValue),
+            status: proposal.status,
+            imgUrl: proposal.car?.images[0]?.url ?? null,
+            name: proposal.car?.name ?? "Veículo não identificado",
+            message: proposal.message,
+            date_offer: proposal.date_offer,
+            user: proposal.user,
+        })));
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao buscar propostas." });
+    }
+};
+exports.getAllProposals = getAllProposals;
+const updateProposalStatus = async (req, res) => {
+    const status = req.body?.status;
+    if (status !== "EmAnalise" && status !== "Aceita" && status !== "Recusada")
+        return res.status(400).json({ error: "Status inválido." });
+    try {
+        const proposal = await database_1.default.garage.update({
+            where: { id: getId(req, "proposalId") },
+            data: { status },
+        });
+        return res.status(200).json(proposal);
+    }
+    catch (error) {
+        if (error?.code === "P2025")
+            return res.status(404).json({ error: "Proposta não encontrada." });
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao atualizar status da proposta." });
+    }
+};
+exports.updateProposalStatus = updateProposalStatus;
+const deleteAdminProposal = async (req, res) => {
+    const proposalId = getId(req, "proposalId");
+    if (!proposalId || proposalId === "undefined")
+        return res.status(400).json({ error: "Identificador da proposta inválido." });
+    try {
+        const result = await database_1.default.garage.updateMany({
+            where: { id: proposalId },
+            data: { adminArchived: true },
+        });
+        if (result.count === 0)
+            return res.status(404).json({ error: "Proposta não encontrada." });
+        return res.status(200).json({ message: "Proposta excluída com sucesso." });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao excluir proposta." });
+    }
+};
+exports.deleteAdminProposal = deleteAdminProposal;
 //# sourceMappingURL=garageController.js.map

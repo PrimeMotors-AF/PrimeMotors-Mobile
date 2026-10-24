@@ -11,7 +11,7 @@ const register = async (req, res) => {
     try {
         const data = req.body;
         const newUser = await (0, userService_1.createUserService)(data);
-        return res.status(201).json(newUser);
+        return res.status(201).json({ user: newUser });
     }
     catch (error) {
         const message = error instanceof Error ? error.message : "Erro desconhecido";
@@ -36,7 +36,7 @@ const login = async (req, res) => {
                 .status(401)
                 .json({ message: "Usuário inexistente ou desativado." });
         }
-        const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+        const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
         const { password: _, ...userWithoutPassword } = user;
         return res
             .status(200)

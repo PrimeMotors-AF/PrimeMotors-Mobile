@@ -16,6 +16,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+For local web development, set `EXPO_PUBLIC_API_URL=http://localhost:3000`
+in `.env` and make sure the backend is running with port `3000` published.
+For a physical device, replace `localhost` with the computer's LAN IP. The
+Docker-served web build uses an empty value and routes API requests through
+Nginx on the same origin.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
