@@ -1,9 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteTestDriveController = exports.updateTestDriveController = exports.listTestDrivesController = exports.createTestDriveController = void 0;
 const client_1 = require("@prisma/client");
-const library_1 = require("@prisma/client/runtime/library");
-const prisma = new client_1.PrismaClient();
+const database_1 = __importDefault(require("../config/database"));
 // Captura o ID do usuário autenticado injetado pelo middleware de autenticação
 const getUserIdFromRequest = (req) => req.user?.id;
 // ==========================================
@@ -22,7 +24,7 @@ const createTestDriveController = async (req, res) => {
         const dateFormatted = new Date(scheduledAt);
         const parsedCarId = String(carId);
         // Valida se já existe agendamento idêntico para o mesmo usuário, carro e horário
-        const existing = await prisma.testDrive.findFirst({
+        const existing = await database_1.default.testDrive.findFirst({
             where: {
                 carId: parsedCarId,
                 userId: authenticatedUserId,
@@ -32,7 +34,7 @@ const createTestDriveController = async (req, res) => {
         if (existing) {
             return res.status(400).json({ error: "Você já possui um agendamento para este veículo neste horário." });
         }
-        const testDrive = await prisma.testDrive.create({
+        const testDrive = await database_1.default.testDrive.create({
             data: {
                 carId: parsedCarId,
                 userId: authenticatedUserId,
@@ -44,7 +46,7 @@ const createTestDriveController = async (req, res) => {
     }
     catch (error) {
         console.error("ERRO COMPLETO DO PRISMA:", error);
-        if (error instanceof library_1.PrismaClientKnownRequestError && error.code === "P2002") {
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             return res.status(409).json({ error: "Este agendamento já existe." });
         }
         return res.status(500).json({ error: "Erro interno ao agendar test drive." });
@@ -64,7 +66,7 @@ const listTestDrivesController = async (req, res) => {
         return res.status(403).json({ error: "Acesso negado." });
     }
     try {
-        const testDrives = await prisma.testDrive.findMany({
+        const testDrives = await database_1.default.testDrive.findMany({
             where: { userId: requestedUserId },
             include: {
                 car: {
@@ -96,14 +98,14 @@ const updateTestDriveController = async (req, res) => {
     if (!id)
         return res.status(400).json({ error: "ID do agendamento é obrigatório." });
     try {
-        const agendamento = await prisma.testDrive.findFirst({
+        const agendamento = await database_1.default.testDrive.findFirst({
             where: { id, userId: authenticatedUserId },
         });
         if (!agendamento) {
             return res.status(404).json({ error: "Agendamento não encontrado para este usuário." });
         }
         // AJUSTE: Atualiza a data e também a observação se ela for enviada
-        const updated = await prisma.testDrive.update({
+        const updated = await database_1.default.testDrive.update({
             where: { id },
             data: {
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : agendamento.scheduledAt,
@@ -130,13 +132,13 @@ const deleteTestDriveController = async (req, res) => {
     if (!id)
         return res.status(400).json({ error: "ID do agendamento é obrigatório." });
     try {
-        const agendamento = await prisma.testDrive.findFirst({
+        const agendamento = await database_1.default.testDrive.findFirst({
             where: { id, userId: authenticatedUserId },
         });
         if (!agendamento) {
             return res.status(404).json({ error: "Agendamento não encontrado." });
         }
-        await prisma.testDrive.delete({ where: { id } });
+        await database_1.default.testDrive.delete({ where: { id } });
         return res.status(200).json({ message: "Test drive excluído." });
     }
     catch (error) {

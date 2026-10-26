@@ -17,6 +17,8 @@ import {
   getUserController,
   updateUserController,
 } from "./controllers/userController";
+import prisma from "./config/database";
+import { redisClient } from "./config/redis";
 import userGarageRoutes from "./routes/userGarageRoutes";
 
 const app = express();
@@ -37,6 +39,16 @@ app.use(
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend rodando com sucesso!" });
+});
+
+app.get("/health/ready", async (_req, res) => {
+  try {
+    await Promise.all([prisma.$queryRaw`SELECT 1`, redisClient.ping()]);
+    return res.status(200).json({ status: "ready" });
+  } catch (error) {
+    console.error("Backend database/Redis readiness check failed:", error);
+    return res.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use("/auth", authRoutes);

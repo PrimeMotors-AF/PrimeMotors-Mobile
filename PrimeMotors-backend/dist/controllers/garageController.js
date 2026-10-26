@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAdminProposal = exports.updateProposalStatus = exports.getAllProposals = exports.getUserProposals = exports.deleteProposal = exports.updateProposal = exports.createProposal = void 0;
-const library_1 = require("@prisma/client/runtime/library");
+const client_1 = require("@prisma/client");
 const database_1 = __importDefault(require("../config/database"));
 const parsePaginationParam = (value, fallback) => {
     const pageString = Array.isArray(value) ? value[0] : value;
@@ -37,7 +37,7 @@ const createProposal = async (req, res) => {
         return res.status(201).json(proposal);
     }
     catch (error) {
-        if (error instanceof library_1.PrismaClientKnownRequestError &&
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
             error.code === "P2002")
             return res
                 .status(409)

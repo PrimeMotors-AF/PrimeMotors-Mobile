@@ -15,6 +15,8 @@ const carRoutes_1 = __importDefault(require("./routes/carRoutes"));
 const favoriteRoutes_1 = __importDefault(require("./routes/favoriteRoutes"));
 const authMiddleware_1 = require("./middlewares/authMiddleware");
 const testDriveRoutes_1 = __importDefault(require("./routes/testDriveRoutes"));
+const database_1 = __importDefault(require("./config/database"));
+const redis_1 = require("./config/redis");
 const userGarageRoutes_1 = __importDefault(require("./routes/userGarageRoutes"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -30,6 +32,16 @@ app.use((0, cors_1.default)({
 }));
 app.get("/", (req, res) => {
     res.json({ message: "Backend rodando com sucesso!" });
+});
+app.get("/health/ready", async (_req, res) => {
+    try {
+        await Promise.all([database_1.default.$queryRaw `SELECT 1`, redis_1.redisClient.ping()]);
+        return res.status(200).json({ status: "ready" });
+    }
+    catch (error) {
+        console.error("Backend database/Redis readiness check failed:", error);
+        return res.status(503).json({ status: "unavailable" });
+    }
 });
 app.use("/auth", authRoutes_1.default);
 app.use("/users", authMiddleware_1.authMiddleware, userRoutes_1.default);

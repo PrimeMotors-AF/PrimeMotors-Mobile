@@ -6,9 +6,10 @@
 O serviço `mobile` exporta o projeto Expo para web durante o build e serve os
 arquivos estáticos com o Nginx configurado em `Mobile/nginx.conf`. Ele encaminha
 as rotas da API para o serviço `backend` pela rede interna do Docker.
-O Compose também provisiona Redis com volume persistente; ele fica acessível
-somente pela rede Docker em `redis:6379`. A aplicação ainda precisa integrar
-esse serviço para cumprir cache e publicação/consumo de eventos.
+O backend também mantém uma conexão com Redis. Dentro do Docker, use
+`redis://redis:6379`; no host local, use `redis://127.0.0.1:6379`. O Compose
+publica Redis somente no loopback do host e mantém os dados no volume
+persistente `redis_data`.
 
 1. Crie `PrimeMotors-docker/.env` a partir de `.env.example` e informe valores
    próprios para as variáveis do MySQL. `MYSQL_USER` deve ser um usuário comum
@@ -19,9 +20,11 @@ esse serviço para cumprir cache e publicação/consumo de eventos.
    pelo usuário de aplicação. Codifique caracteres especiais da senha como
    `%40` para `@`, por exemplo.
 2. Crie `PrimeMotors-backend/.env` a partir do respectivo `.env.example` para as
-   demais configurações do backend. Configure `DATABASE_URL` no `.env desta
-   pasta para apontar ao hostname `db` dentro da rede Docker, não a `localhost`;
-   esse valor será aplicado ao backend pelo Compose.
+   demais configurações do backend. Para executar o seed pelo terminal do host,
+   configure `DATABASE_URL` nesse arquivo com `localhost`, o usuário/senha de
+   aplicação e o nome do banco. Para o backend dentro do Docker, configure
+   `DATABASE_URL` em `PrimeMotors-docker/.env` com o hostname `db`; o Compose
+   fornece esse valor ao container.
 3. A partir desta pasta, execute:
 
    ```sh
@@ -36,10 +39,29 @@ Durante o desenvolvimento pelo Expo fora do Docker, o backend também fica
 disponível em `http://localhost:3000`; configure
 `Mobile/.env` com `EXPO_PUBLIC_API_URL=http://localhost:3000` e reinicie o
 servidor Expo para carregar a variável.
+Para executar o backend diretamente no host, configure
+`PrimeMotors-backend/.env` com `REDIS_URL=redis://127.0.0.1:6379`.
 
-O Compose aguarda os health checks do banco, Redis e API antes de iniciar os
-serviços dependentes. Logs de Nginx vão para stdout/stderr e os logs dos
-containers têm rotação configurada.
+O health check do banco valida uma consulta usando o usuário de aplicação, e o
+da API confirma que ela consegue consultar o banco e o Redis. Assim, a página
+web não é marcada como pronta só porque o processo HTTP respondeu. Logs de
+Nginx vão para stdout/stderr e os logs dos containers têm rotação configurada.
+
+A conexão está preparada, mas ainda não há produtor/consumidor de e-mails. Para
+o futuro microserviço Python, uma fila Redis Streams com consumer groups permite
+confirmar o processamento somente depois do envio do e-mail; não publique
+eventos até o worker estar pronto para consumi-los.
+
+> As variáveis `MYSQL_*` inicializam contas e bancos apenas quando o volume
+> `mysql_data` é criado pela primeira vez. Alterar o `.env` não troca credenciais
+> em um volume já existente. Atualize a conta no MySQL com credenciais
+> administrativas; não remova o volume para corrigir senha se precisar manter
+> os dados.
+
+Antes de preencher o banco, execute `npx prisma db seed` na pasta
+`PrimeMotors-backend`. O seed apaga dados de várias tabelas antes de recriá-los;
+confirme que está conectado ao banco correto e mantenha backup se houver dados
+que devam ser preservados.
 
 ### Prisma Migrate
 
