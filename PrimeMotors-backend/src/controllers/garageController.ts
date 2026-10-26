@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
+import emailService from "../services/emailService";
 
 const parsePaginationParam = (
   value: string | string[] | undefined,
@@ -40,10 +41,51 @@ export const createProposal = async (req: Request, res: Response) => {
         .json({ error: "Já existe uma proposta pendente para este veículo." });
 
     const proposal = await prisma.garage.create({
-      data: { offeredValue, message, carId, userId, status: "Pendente" }, // ✅ sem carImageUrl
+      data: { offeredValue, message, carId, userId, status: "Pendente" },
     });
 
+    const [user, car] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true },
+      }),
+      prisma.car.findUnique({
+        where: { id: carId },
+        select: { id: true, name: true, value: true },
+      }),
+    ]);
+
+    if (user && car) {
+      try {
+        await emailService.sendProposalCreated({
+          event: "proposal.created",
+          data: {
+            proposal: {
+              id: proposal.id,
+              offeredValue: proposal.offeredValue.toString(),
+              message: proposal.message,
+              status: proposal.status,
+              createdAt: proposal.date_offer.toISOString(),
+            },
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+            },
+            car: {
+              id: car.id,
+              name: car.name,
+              value: car.value.toString(),
+            },
+          },
+        });
+      } catch (emailError) {
+        console.error("Falha ao enviar e-mail da proposta:", emailError);
+      }
+    }
+
     return res.status(201).json(proposal);
+
   } catch (error: any) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
