@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import type { ParsedQs } from "qs";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { Prisma } from "@prisma/client";
 import {
   createFavorite,
   deleteFavorite,
@@ -63,7 +63,7 @@ export const toggleFavoriteController = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     if (
-      error instanceof PrismaClientKnownRequestError &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     )
       return res.status(409).json({ error: "Favorito já existe." });
@@ -87,7 +87,7 @@ export const createFavoriteController = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     if (
-      error instanceof PrismaClientKnownRequestError &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     )
       return res.status(409).json({ error: "Favorito já existe." });

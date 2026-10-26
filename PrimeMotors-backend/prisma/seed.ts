@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma, FuelType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma, FuelType } from "@prisma/client";
+import prisma from "../src/config/database";
 
 async function main() {
   await prisma.testDrive.deleteMany();
@@ -482,12 +481,16 @@ async function main() {
   }
 }
 
-main()
-  .then(() => {
+async function runSeed() {
+  try {
+    await main();
     console.log("🌱 Seed finalizado");
-    prisma.$disconnect();
-  })
-  .catch((e) => {
-    console.error(e);
-    prisma.$disconnect();
-  });
+  } catch (error) {
+    console.error("Falha ao executar o seed:", error);
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+void runSeed();

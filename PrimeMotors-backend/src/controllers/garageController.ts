@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 
 const parsePaginationParam = (
@@ -46,7 +46,7 @@ export const createProposal = async (req: Request, res: Response) => {
     return res.status(201).json(proposal);
   } catch (error: any) {
     if (
-      error instanceof PrismaClientKnownRequestError &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     )
       return res

@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import prisma from "../config/database";
 
 // Captura o ID do usuário autenticado injetado pelo middleware de autenticação
 const getUserIdFromRequest = (req: Request) => req.user?.id;
@@ -50,7 +48,7 @@ export const createTestDriveController = async (req: Request, res: Response) => 
     return res.status(201).json(testDrive);
   } catch (error: any) {
     console.error("ERRO COMPLETO DO PRISMA:", error);
-    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return res.status(409).json({ error: "Este agendamento já existe." });
     }
     return res.status(500).json({ error: "Erro interno ao agendar test drive." });

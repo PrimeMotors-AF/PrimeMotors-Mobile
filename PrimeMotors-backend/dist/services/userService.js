@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deactivateUserService = exports.updateUserService = exports.getUserByIdService = exports.loginService = exports.createUserService = void 0;
+exports.updateUserAvatarService = exports.deactivateUserService = exports.updateUserService = exports.getUserByIdService = exports.loginService = exports.createUserService = void 0;
 const database_1 = __importDefault(require("../config/database"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -136,6 +136,8 @@ const getUserByIdService = async (id) => {
             cpf: true,
             cep: true,
             number: true,
+            avatarUrl: true,
+            role: true,
         },
     });
 };
@@ -185,4 +187,11 @@ const deactivateUserService = async (id) => {
     });
 };
 exports.deactivateUserService = deactivateUserService;
+const updateUserAvatarService = async (id, avatarUrl) => {
+    return await database_1.default.user.update({
+        where: { id },
+        data: { avatarUrl },
+    });
+};
+exports.updateUserAvatarService = updateUserAvatarService;
 //# sourceMappingURL=userService.js.map
