@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
+import { publishProposalCreated } from "../services/proposalEvents";
 
 const parsePaginationParam = (
   value: string | string[] | undefined,
@@ -40,10 +41,45 @@ export const createProposal = async (req: Request, res: Response) => {
         .json({ error: "Já existe uma proposta pendente para este veículo." });
 
     const proposal = await prisma.garage.create({
-      data: { offeredValue, message, carId, userId, status: "Pendente" }, // ✅ sem carImageUrl
+      data: { offeredValue, message, carId, userId, status: "Pendente" },
+      include: {
+        user: { select: { name: true, email: true } },
+        car: { select: { id: true, name: true, model: true } },
+      },
     });
 
-    return res.status(201).json(proposal);
+    try {
+      await publishProposalCreated({
+        proposalId: proposal.id,
+        userId: proposal.userId,
+        userName: proposal.user.name,
+        userEmail: proposal.user.email,
+        carId: proposal.car.id,
+        carName: `${proposal.car.name} ${proposal.car.model}`.trim(),
+        offeredValue: proposal.offeredValue.toString(),
+      });
+    } catch (error) {
+      console.error("Proposal was saved but its Redis event was not persisted", {
+        proposalId: proposal.id,
+        error,
+      });
+      return res.status(503).json({
+        error: "Proposta salva, mas o evento de confirmação não foi enfileirado.",
+        proposalId: proposal.id,
+      });
+    }
+
+    return res.status(201).json({
+      id: proposal.id,
+      date_offer: proposal.date_offer,
+      offeredValue: proposal.offeredValue,
+      message: proposal.message,
+      carImageUrl: proposal.carImageUrl,
+      status: proposal.status,
+      adminArchived: proposal.adminArchived,
+      carId: proposal.carId,
+      userId: proposal.userId,
+    });
   } catch (error: any) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

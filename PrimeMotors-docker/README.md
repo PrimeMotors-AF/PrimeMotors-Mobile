@@ -9,7 +9,10 @@ as rotas da API para o serviço `backend` pela rede interna do Docker.
 O backend também mantém uma conexão com Redis. Dentro do Docker, use
 `redis://redis:6379`; no host local, use `redis://127.0.0.1:6379`. O Compose
 publica Redis somente no loopback do host e mantém os dados no volume
-persistente `redis_data`.
+persistente `redis_data`. Leituras de carros usam cache-aside com TTL padrão de
+300 segundos (`CAR_CACHE_TTL_SECONDS`); a invalidação incrementa a versão das
+chaves para expirar logicamente todas as páginas e detalhes sem depender de
+varreduras globais no Redis.
 
 1. Crie `PrimeMotors-docker/.env` a partir de `.env.example` e informe valores
    próprios para as variáveis do MySQL. `MYSQL_USER` deve ser um usuário comum
@@ -48,9 +51,18 @@ web não é marcada como pronta só porque o processo HTTP respondeu. Logs de
 Nginx vão para stdout/stderr e os logs dos containers têm rotação configurada.
 
 A conexão está preparada, mas ainda não há produtor/consumidor de e-mails. Para
-o futuro microserviço Python, uma fila Redis Streams com consumer groups permite
-confirmar o processamento somente depois do envio do e-mail; não publique
-eventos até o worker estar pronto para consumi-los.
+propostas criadas, o backend publica `proposal.created` no canal Pub/Sub
+`proposals.created` e registra o mesmo evento no Redis Stream
+`email.confirmations`. O consumidor Pub/Sub local registra o recebimento para
+observabilidade. Como Pub/Sub não retém mensagens para consumidores offline, o
+futuro microserviço Python deve consumir o stream com um consumer group,
+confirmando cada mensagem (`XACK`) somente depois de enviar o e-mail e usando
+`eventId` para evitar envios duplicados em caso de reprocessamento. Os campos do
+stream ficam no campo `event` como JSON com `eventId`, `type`, `occurredAt`,
+`proposalId`, `userId`, `userName`, `userEmail`, `carId`, `carName` e
+`offeredValue`. Quando uma rota para criar/editar/remover carros for adicionada,
+ela deve chamar `invalidateCarCache()` depois que a alteração no MySQL for
+confirmada.
 
 > As variáveis `MYSQL_*` inicializam contas e bancos apenas quando o volume
 > `mysql_data` é criado pela primeira vez. Alterar o `.env` não troca credenciais

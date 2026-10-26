@@ -15,7 +15,6 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 
   try {
-    console.log("1. SECRET NO MIDDLEWARE:", process.env.JWT_SECRET);
     const payload = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload & {
       id: string;
       email: string;
@@ -24,8 +23,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
     req.user = payload;
     return next();
-  } catch(error:any) {
-    console.log("2. ERRO DO JWT:", error.message);
+  } catch {
+    console.warn("JWT verification failed.");
     return res.status(401).json({ message: "Token Inválido ou Expirado!" });
   }
   

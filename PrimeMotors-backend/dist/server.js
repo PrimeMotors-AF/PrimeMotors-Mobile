@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const database_1 = __importDefault(require("./config/database"));
 const redis_1 = require("./config/redis");
+const proposalEvents_1 = require("./services/proposalEvents");
 const app_1 = __importDefault(require("./app"));
 const port = Number(process.env.PORT) || 3000;
 async function startServer() {
     await redis_1.redisClient.connect();
+    const proposalSubscriber = await (0, proposalEvents_1.startProposalEventSubscriber)();
     const server = app_1.default.listen(port, '0.0.0.0', () => {
         console.log(`🚀 Servidor online na porta ${port}`);
     });
@@ -19,6 +21,9 @@ async function startServer() {
                 try {
                     if (redis_1.redisClient.isOpen) {
                         await redis_1.redisClient.quit();
+                    }
+                    if (proposalSubscriber.isOpen) {
+                        await proposalSubscriber.quit();
                     }
                     await database_1.default.$disconnect();
                     if (error) {

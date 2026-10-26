@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCars = getCars;
 exports.getCarById = getCarById;
 const database_1 = __importDefault(require("../config/database"));
+const carCache_1 = require("./carCache");
 // 1. Definição clara da função de formatação
 const formatCar = (car) => ({
     id: car.id,
@@ -27,6 +28,11 @@ const formatCar = (car) => ({
 async function getCars(page = 1, limit = 100) {
     const validPage = Number.isInteger(page) && page > 0 ? page : 1;
     const validLimit = Number.isInteger(limit) && limit > 0 ? limit : 100;
+    const cacheKey = `list:p${validPage}:l${validLimit}`;
+    const cachedCars = await (0, carCache_1.getCachedCarResult)(cacheKey);
+    if (cachedCars) {
+        return cachedCars;
+    }
     const cars = await database_1.default.car.findMany({
         skip: (validPage - 1) * validLimit,
         take: validLimit,
@@ -37,9 +43,16 @@ async function getCars(page = 1, limit = 100) {
             category: true,
         },
     });
-    return cars.map(formatCar);
+    const formattedCars = cars.map(formatCar);
+    await (0, carCache_1.setCachedCarResult)(cacheKey, formattedCars);
+    return formattedCars;
 }
 async function getCarById(id) {
+    const cacheKey = `detail:${id}`;
+    const cachedCar = await (0, carCache_1.getCachedCarResult)(cacheKey);
+    if (cachedCar) {
+        return cachedCar;
+    }
     const car = await database_1.default.car.findUnique({
         where: { id },
         include: {
@@ -68,7 +81,7 @@ async function getCarById(id) {
             .filter(([key, value]) => value === true && key !== "id") // Filtra apenas o que é true
             .map(([key]) => itemLabels[key] || key) // Traduz ou usa a chave original
         : [];
-    return {
+    const detailedCar = {
         ...formatted,
         model: car.model,
         allImages: car.images.map((img) => img.url),
@@ -81,5 +94,7 @@ async function getCarById(id) {
             max_speed: car.espec.max_speed,
         },
     };
+    await (0, carCache_1.setCachedCarResult)(cacheKey, detailedCar);
+    return detailedCar;
 }
 //# sourceMappingURL=carService.js.map

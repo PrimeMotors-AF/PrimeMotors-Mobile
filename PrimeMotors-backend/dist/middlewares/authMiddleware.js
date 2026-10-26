@@ -15,13 +15,12 @@ const authMiddleware = (req, res, next) => {
         return res.status(401).json({ message: "Token Malformatado" });
     }
     try {
-        console.log("1. SECRET NO MIDDLEWARE:", process.env.JWT_SECRET);
         const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
         req.user = payload;
         return next();
     }
-    catch (error) {
-        console.log("2. ERRO DO JWT:", error.message);
+    catch {
+        console.warn("JWT verification failed.");
         return res.status(401).json({ message: "Token Inválido ou Expirado!" });
     }
 };

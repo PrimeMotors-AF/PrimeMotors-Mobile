@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAdminProposal = exports.updateProposalStatus = exports.getAllProposals = exports.getUserProposals = exports.deleteProposal = exports.updateProposal = exports.createProposal = void 0;
 const client_1 = require("@prisma/client");
 const database_1 = __importDefault(require("../config/database"));
+const proposalEvents_1 = require("../services/proposalEvents");
 const parsePaginationParam = (value, fallback) => {
     const pageString = Array.isArray(value) ? value[0] : value;
     const parsed = Number(pageString);
@@ -32,9 +33,44 @@ const createProposal = async (req, res) => {
                 .status(409)
                 .json({ error: "Já existe uma proposta pendente para este veículo." });
         const proposal = await database_1.default.garage.create({
-            data: { offeredValue, message, carId, userId, status: "Pendente" }, // ✅ sem carImageUrl
+            data: { offeredValue, message, carId, userId, status: "Pendente" },
+            include: {
+                user: { select: { name: true, email: true } },
+                car: { select: { id: true, name: true, model: true } },
+            },
         });
-        return res.status(201).json(proposal);
+        try {
+            await (0, proposalEvents_1.publishProposalCreated)({
+                proposalId: proposal.id,
+                userId: proposal.userId,
+                userName: proposal.user.name,
+                userEmail: proposal.user.email,
+                carId: proposal.car.id,
+                carName: `${proposal.car.name} ${proposal.car.model}`.trim(),
+                offeredValue: proposal.offeredValue.toString(),
+            });
+        }
+        catch (error) {
+            console.error("Proposal was saved but its Redis event was not persisted", {
+                proposalId: proposal.id,
+                error,
+            });
+            return res.status(503).json({
+                error: "Proposta salva, mas o evento de confirmação não foi enfileirado.",
+                proposalId: proposal.id,
+            });
+        }
+        return res.status(201).json({
+            id: proposal.id,
+            date_offer: proposal.date_offer,
+            offeredValue: proposal.offeredValue,
+            message: proposal.message,
+            carImageUrl: proposal.carImageUrl,
+            status: proposal.status,
+            adminArchived: proposal.adminArchived,
+            carId: proposal.carId,
+            userId: proposal.userId,
+        });
     }
     catch (error) {
         if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
