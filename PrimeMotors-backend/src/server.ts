@@ -1,6 +1,7 @@
 import prisma from "./config/database";
 import { redisClient } from "./config/redis";
 import { startProposalEventSubscriber } from "./services/proposalEvents";
+import { startProposalOutboxDispatcher } from "./services/proposalOutbox";
 import app from './app';
 
 const port = Number(process.env.PORT) || 3000;
@@ -8,6 +9,7 @@ const port = Number(process.env.PORT) || 3000;
 async function startServer() {
   await redisClient.connect();
   const proposalSubscriber = await startProposalEventSubscriber();
+  const stopProposalOutboxDispatcher = startProposalOutboxDispatcher();
   const server = app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Servidor online na porta ${port}`);
   });
@@ -17,6 +19,7 @@ async function startServer() {
     server.close((error) => {
       void (async () => {
         try {
+          await stopProposalOutboxDispatcher();
           if (redisClient.isOpen) {
             await redisClient.quit();
           }

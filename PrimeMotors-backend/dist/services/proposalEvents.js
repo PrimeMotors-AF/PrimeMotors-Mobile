@@ -1,23 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.proposalEventStream = void 0;
+exports.trimProposalEventStream = trimProposalEventStream;
 exports.publishProposalCreated = publishProposalCreated;
 exports.startProposalEventSubscriber = startProposalEventSubscriber;
-const node_crypto_1 = require("node:crypto");
 const redis_1 = require("../config/redis");
 const PROPOSAL_CREATED_CHANNEL = "proposals.created";
 const EMAIL_CONFIRMATION_STREAM = "email.confirmations";
+const STREAM_MAX_LENGTH = 10_000;
+const STREAM_RETENTION_DAYS = 30;
+async function trimProposalEventStream() {
+    const minimumStreamId = `${Date.now() - STREAM_RETENTION_DAYS * 24 * 60 * 60 * 1_000}-0`;
+    await redis_1.redisClient.xTrim(EMAIL_CONFIRMATION_STREAM, "MINID", minimumStreamId, {
+        strategyModifier: "~",
+    });
+}
 async function publishProposalCreated(proposal) {
     const event = {
         ...proposal,
-        eventId: (0, node_crypto_1.randomUUID)(),
         type: "proposal.created",
-        occurredAt: new Date().toISOString(),
     };
     const serializedEvent = JSON.stringify(event);
     const streamId = await redis_1.redisClient.xAdd(EMAIL_CONFIRMATION_STREAM, "*", {
         event: serializedEvent,
+    }, {
+        TRIM: {
+            strategy: "MAXLEN",
+            strategyModifier: "~",
+            threshold: STREAM_MAX_LENGTH,
+        },
     });
+    await trimProposalEventStream();
     console.info("Proposal event persisted to Redis Stream", {
         eventId: event.eventId,
         stream: EMAIL_CONFIRMATION_STREAM,

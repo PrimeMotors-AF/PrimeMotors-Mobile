@@ -1,36 +1,44 @@
-import { randomUUID } from "node:crypto";
 import { redisClient } from "../config/redis";
 
 const PROPOSAL_CREATED_CHANNEL = "proposals.created";
 const EMAIL_CONFIRMATION_STREAM = "email.confirmations";
+const STREAM_MAX_LENGTH = 10_000;
+const STREAM_RETENTION_DAYS = 30;
+
+export async function trimProposalEventStream() {
+  const minimumStreamId =
+    `${Date.now() - STREAM_RETENTION_DAYS * 24 * 60 * 60 * 1_000}-0`;
+  await redisClient.xTrim(EMAIL_CONFIRMATION_STREAM, "MINID", minimumStreamId, {
+    strategyModifier: "~",
+  });
+}
 
 export type ProposalCreatedEvent = {
   eventId: string;
   type: "proposal.created";
   occurredAt: string;
   proposalId: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  carId: string;
-  carName: string;
-  offeredValue: string;
 };
 
 export async function publishProposalCreated(
-  proposal: Omit<ProposalCreatedEvent, "eventId" | "type" | "occurredAt">,
+  proposal: Pick<ProposalCreatedEvent, "eventId" | "proposalId" | "occurredAt">,
 ) {
   const event: ProposalCreatedEvent = {
     ...proposal,
-    eventId: randomUUID(),
     type: "proposal.created",
-    occurredAt: new Date().toISOString(),
   };
   const serializedEvent = JSON.stringify(event);
 
   const streamId = await redisClient.xAdd(EMAIL_CONFIRMATION_STREAM, "*", {
     event: serializedEvent,
+  }, {
+    TRIM: {
+      strategy: "MAXLEN",
+      strategyModifier: "~",
+      threshold: STREAM_MAX_LENGTH,
+    },
   });
+  await trimProposalEventStream();
 
   console.info("Proposal event persisted to Redis Stream", {
     eventId: event.eventId,

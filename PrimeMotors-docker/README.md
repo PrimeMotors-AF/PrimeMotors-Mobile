@@ -50,19 +50,25 @@ da API confirma que ela consegue consultar o banco e o Redis. Assim, a página
 web não é marcada como pronta só porque o processo HTTP respondeu. Logs de
 Nginx vão para stdout/stderr e os logs dos containers têm rotação configurada.
 
-A conexão está preparada, mas ainda não há produtor/consumidor de e-mails. Para
-propostas criadas, o backend publica `proposal.created` no canal Pub/Sub
-`proposals.created` e registra o mesmo evento no Redis Stream
-`email.confirmations`. O consumidor Pub/Sub local registra o recebimento para
-observabilidade. Como Pub/Sub não retém mensagens para consumidores offline, o
-futuro microserviço Python deve consumir o stream com um consumer group,
-confirmando cada mensagem (`XACK`) somente depois de enviar o e-mail e usando
-`eventId` para evitar envios duplicados em caso de reprocessamento. Os campos do
-stream ficam no campo `event` como JSON com `eventId`, `type`, `occurredAt`,
-`proposalId`, `userId`, `userName`, `userEmail`, `carId`, `carName` e
-`offeredValue`. Quando uma rota para criar/editar/remover carros for adicionada,
-ela deve chamar `invalidateCarCache()` depois que a alteração no MySQL for
-confirmada.
+Para propostas criadas, o backend grava a proposta e seu evento na tabela
+`ProposalOutbox` dentro da mesma transação MySQL. Um dispatcher publica eventos
+pendentes no Redis Stream `email.confirmations`, com retry exponencial e lease
+para evitar que duas instâncias processem a mesma linha ao mesmo tempo. O campo
+`event` contém somente `eventId`, `type`, `occurredAt` e `proposalId`; nome,
+e-mail, valor ofertado e outros dados pessoais não são copiados para Redis. O
+`proposalId` ainda é um identificador rastreável e deve ser tratado como dado
+pseudonimizado, não como dado anônimo. O futuro microserviço Python deve obter
+os dados necessários por uma interface interna autenticada, sem recolocá-los no
+evento, e consumir o stream com um consumer group, confirmando cada mensagem
+(`XACK`) somente depois de processá-la e usando `eventId` para tornar o
+processamento idempotente. O Stream mantém no máximo
+aproximadamente 10.000 eventos e remove eventos com mais de 30 dias; eventos
+publicados no outbox são removidos do MySQL após 30 dias, enquanto eventos que
+ainda não chegaram ao Redis permanecem pendentes para retry. Portanto, o
+consumidor futuro deve estar operacional dentro dessa janela, e o limite deve
+ser revisto de acordo com o volume real antes de produção. Quando uma rota para
+criar/editar/remover carros for adicionada, ela deve chamar
+`invalidateCarCache()` depois que a alteração no MySQL for confirmada.
 
 > As variáveis `MYSQL_*` inicializam contas e bancos apenas quando o volume
 > `mysql_data` é criado pela primeira vez. Alterar o `.env` não troca credenciais

@@ -137,6 +137,18 @@ model Garage {
   @@unique([userId, carId, status])
 }
 
+model ProposalOutbox {
+  id            String    @id @default(uuid())
+  proposalId    String
+  createdAt     DateTime  @default(now())
+  nextAttemptAt DateTime  @default(now())
+  publishedAt   DateTime?
+  lockedUntil   DateTime?
+  attempts      Int       @default(0)
+
+  @@index([publishedAt, nextAttemptAt, lockedUntil, createdAt])
+}
+
 model Favorite {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
