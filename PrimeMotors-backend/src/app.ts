@@ -20,8 +20,10 @@ import {
 import prisma from "./config/database";
 import { redisClient } from "./config/redis";
 import userGarageRoutes from "./routes/userGarageRoutes";
+import { apiRateLimit } from "./middlewares/rateLimit";
 
 const app = express();
+app.set("trust proxy", "uniquelocal");
 app.use(express.json());
 
 app.use(
@@ -51,6 +53,7 @@ app.get("/health/ready", async (_req, res) => {
   }
 });
 
+app.use(apiRateLimit);
 app.use("/auth", authRoutes);
 app.use("/users", authMiddleware, userRoutes);
 app.use("/garage", userGarageRoutes);

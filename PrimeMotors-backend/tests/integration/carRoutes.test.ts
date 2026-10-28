@@ -1,4 +1,12 @@
 import request from "supertest";
+
+jest.mock("../../src/config/redis", () => ({
+  redisClient: {
+    eval: jest.fn().mockResolvedValue([1, 900_000]),
+    ping: jest.fn().mockResolvedValue("PONG"),
+  },
+}));
+
 import app from "../../src/app";
 import * as carService from "../../src/services/carService";
 

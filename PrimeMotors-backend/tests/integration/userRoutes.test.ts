@@ -1,6 +1,13 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret";
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
+jest.mock("../../src/config/redis", () => ({
+  redisClient: {
+    eval: jest.fn().mockResolvedValue([1, 900_000]),
+    ping: jest.fn().mockResolvedValue("PONG"),
+  },
+}));
+
 import * as userService from "../../src/services/userService";
 jest.mock("../../src/services/userService");
 
