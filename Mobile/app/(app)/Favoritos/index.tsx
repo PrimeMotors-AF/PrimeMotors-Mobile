@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -66,9 +66,11 @@ export default function Favoritos() {
     }
   }, [router]);
 
-  useEffect(() => {
-    void loadFavorites();
-  }, [loadFavorites]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadFavorites();
+    }, [loadFavorites]),
+  );
 
   const openEditor = (favorite: FavoriteCar) => {
     setActiveFavorite(favorite);
