@@ -158,7 +158,7 @@ export default function CardCarro({
         {/* Detalhes */}
         <Link
           href={{
-            pathname: "/(app)/detalhes/[id]",
+            pathname: "/detalhes/[id]",
             params: { id: carro.id },
           }}
           asChild
