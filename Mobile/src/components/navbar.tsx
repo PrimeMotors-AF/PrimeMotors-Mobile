@@ -68,12 +68,18 @@ export function Navbar() {
         }}
       />
       <Tabs.Screen
-        name="Perfil/index"
+        name="Perfil"
         options={{
           title: "Perfil",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="TestDrive/index"
+        options={{
+          tabBarItemStyle: { display: "none" },
         }}
       />
     </Tabs>

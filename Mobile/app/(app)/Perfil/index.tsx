@@ -102,7 +102,8 @@ export default function Perfil() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+
+      mediaTypes: "images",
       quality: 0.8,
       allowsEditing: true,
       aspect: [1, 1],
@@ -258,7 +259,7 @@ export default function Perfil() {
             <InfoRow label="TELEFONE" value={user.number} onPress={() => openEditor("phone")} />
           </View>
         </View>
-        <Pressable onPress={() => router.push("/(app)/TestDrive/" as never)} className="mt-4 border border-[#3D3933] bg-[#1C1C1C] p-4">
+        <Pressable onPress={() => router.push("/(app)/TestDrive")} className="mt-4 border border-[#3D3933] bg-[#1C1C1C] p-4">
           <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#C59958]">MEUS TEST DRIVES</Text>
         </Pressable>
         {user.role === "admin" ? (
