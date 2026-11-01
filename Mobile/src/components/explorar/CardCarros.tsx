@@ -157,7 +157,10 @@ export default function CardCarro({
 
         {/* Detalhes */}
         <Link
-          href={`/detalhes/${carro.id}`  as never}
+          href={{
+            pathname: "/(app)/detalhes/[id]",
+            params: { id: carro.id },
+          }}
           asChild
         >
           <Pressable

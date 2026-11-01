@@ -20,7 +20,6 @@ export function Navbar() {
         tabBarIconStyle: {
           marginTop: 3,
         },
-        href: /\[.*\]/.test(route.name) ? null : undefined, // esconde qualquer rota dinâmica
       })}
     >
       {/* 1º Início: Se o arquivo estiver direto em app/index.tsx */}
@@ -83,7 +82,7 @@ export function Navbar() {
       />
       <Tabs.Screen
         name="detalhes/[id]"
-        options={{ href: null }}
+        options={{ tabBarButton: () => null }}
       />
       <Tabs.Screen
         name="TestDrive/index"
