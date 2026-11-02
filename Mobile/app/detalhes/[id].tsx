@@ -13,8 +13,8 @@ import { Feather } from "@expo/vector-icons";
 
 import Notification from "@/components/detalhes/notification";
 import api from "@/services/api";
-import type { CardCarProps } from "../../../src/types/types";
-import { authStorage } from "../../../src/utils/userLocalStorage";
+import type { CardCarProps } from "../../src/types/types";
+import { authStorage } from "../../src/utils/userLocalStorage";
 import Button from "@/components/button";
 import ProposalModal from "@/components/detalhes/proposalModal";
 import SpecDescription from "@/components/detalhes/specDescription";

@@ -1,5 +1,7 @@
 import { Prisma, FuelType } from "@prisma/client";
 import prisma from "../src/config/database";
+import { redisClient } from "../src/config/redis";
+import { invalidateCarCache } from "../src/services/carCache";
 
 async function main() {
   await prisma.testDrive.deleteMany();
@@ -483,13 +485,28 @@ async function main() {
 
 async function runSeed() {
   try {
+    await redisClient.connect();
     await main();
+    await invalidateCarCache();
     console.log("🌱 Seed finalizado");
   } catch (error) {
     console.error("Falha ao executar o seed:", error);
     process.exitCode = 1;
   } finally {
-    await prisma.$disconnect();
+    try {
+      if (redisClient.isOpen) {
+        await redisClient.quit();
+      }
+    } catch (error) {
+      console.error("Falha ao encerrar conexão Redis do seed:", error);
+      process.exitCode = 1;
+    }
+    try {
+      await prisma.$disconnect();
+    } catch (error) {
+      console.error("Falha ao encerrar conexão Prisma do seed:", error);
+      process.exitCode = 1;
+    }
   }
 }
 

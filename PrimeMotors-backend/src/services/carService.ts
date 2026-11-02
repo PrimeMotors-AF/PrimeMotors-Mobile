@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
+import {
+  getCachedCarResult,
+  setCachedCarResult,
+} from "./carCache";
 
 type CarWithRelations = Prisma.CarGetPayload<{
   include: {
@@ -38,10 +42,30 @@ const formatCar = (car: CarWithRelations) => ({
   },
 });
 
+type DetailedCar = ReturnType<typeof formatCar> & {
+  model: string;
+  allImages: string[];
+  status: CarWithDetailRelations["status"];
+  features: string[];
+  specs: ReturnType<typeof formatCar>["specs"] & {
+    color: string;
+    potency: string;
+    max_speed: string;
+  };
+};
+
 // 2. Agora os exports estão no nível raiz do arquivo (correto)
 export async function getCars(page = 1, limit = 100) {
   const validPage = Number.isInteger(page) && page > 0 ? page : 1;
   const validLimit = Number.isInteger(limit) && limit > 0 ? limit : 100;
+  const cacheKey = `list:p${validPage}:l${validLimit}`;
+  const cachedCars = await getCachedCarResult<ReturnType<typeof formatCar>[]>(
+    cacheKey,
+  );
+
+  if (cachedCars) {
+    return cachedCars;
+  }
 
   const cars = await prisma.car.findMany({
     skip: (validPage - 1) * validLimit,
@@ -53,9 +77,18 @@ export async function getCars(page = 1, limit = 100) {
       category: true,
     },
   });
-  return cars.map(formatCar);
+  const formattedCars = cars.map(formatCar);
+  await setCachedCarResult(cacheKey, formattedCars);
+  return formattedCars;
 }
-export async function getCarById(id: string) {
+export async function getCarById(id: string): Promise<DetailedCar | null> {
+  const cacheKey = `detail:${id}`;
+  const cachedCar = await getCachedCarResult<DetailedCar>(cacheKey);
+
+  if (cachedCar) {
+    return cachedCar;
+  }
+
   const car = await prisma.car.findUnique({
     where: { id },
     include: {
@@ -88,7 +121,7 @@ export async function getCarById(id: string) {
         .map(([key]) => itemLabels[key] || key) // Traduz ou usa a chave original
     : [];
 
-  return {
+  const detailedCar = {
     ...formatted,
     model: car.model,
     allImages: car.images.map((img) => img.url),
@@ -101,4 +134,6 @@ export async function getCarById(id: string) {
       max_speed: car.espec.max_speed,
     },
   };
+  await setCachedCarResult(cacheKey, detailedCar);
+  return detailedCar;
 }
