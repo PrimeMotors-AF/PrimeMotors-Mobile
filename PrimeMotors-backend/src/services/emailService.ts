@@ -43,13 +43,15 @@ const emailService = {
           "x-service-token": token,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(15000),
       },
     );
 
     if (!response.ok) {
+      const errorBody = await response.text();
+
       throw new Error(
-        `Microserviço de e-mail respondeu com HTTP ${response.status}.`,
+        `Microserviço de e-mail respondeu com HTTP ${response.status}: ${errorBody}`,
       );
     }
   },

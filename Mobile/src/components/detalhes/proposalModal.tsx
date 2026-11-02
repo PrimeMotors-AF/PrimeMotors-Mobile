@@ -81,7 +81,10 @@ export default function ProposalModal({
               <TextInput
                 keyboardType="decimal-pad"
                 value={offeredValue}
-                onChangeText={setOfferedValue}
+                onChangeText={(text) => {
+                  const numericValue = text.replace(/[^0-9.,]/g, "");
+                  setOfferedValue(numericValue);
+                }}
                 style={styles.input}
                 placeholderTextColor="#6b7280"
               />
