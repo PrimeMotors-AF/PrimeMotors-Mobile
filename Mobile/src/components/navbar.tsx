@@ -68,7 +68,7 @@ export function Navbar() {
         }}
       />
       <Tabs.Screen
-        name="Perfil"
+        name="Perfil/index"
         options={{
           title: "Perfil",
           tabBarIcon: ({ color, size }) => (
@@ -80,6 +80,12 @@ export function Navbar() {
         name="TestDrive/index"
         options={{
           tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="AdminPropostas/index"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
