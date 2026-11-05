@@ -17,14 +17,14 @@
         "foregroundImage": "./src/assets/images/logoIcon.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.PrimeMotorsMobile"
     },
     "web": {
       "output": "static",
       "favicon": "./src/assets/images/logoIcon.png"
     },
     "plugins": [
-      
       [
         "expo-splash-screen",
         {
@@ -38,7 +38,6 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      
       "expo-web-browser"
     ],
     "experiments": {
