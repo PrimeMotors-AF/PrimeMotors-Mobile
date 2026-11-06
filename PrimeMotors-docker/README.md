@@ -75,6 +75,23 @@ criar/editar/remover carros for adicionada, ela deve chamar
 > em um volume já existente. Atualize a conta no MySQL com credenciais
 > administrativas; não remova o volume para corrigir senha se precisar manter
 > os dados.
+>
+> O banco do Email Service tem o volume independente `email_mysql_data` e a
+> mesma regra se aplica a `EMAIL_MYSQL_ROOT_PASSWORD` e `EMAIL_MYSQL_PASSWORD`.
+> Se os dados desse banco puderem ser descartados, execute na pasta
+> `PrimeMotors-docker`:
+>
+> ```powershell
+> docker compose stop email-service email-mysql
+> docker compose rm -f email-mysql
+> docker volume rm primemotors-docker_email_mysql_data
+> docker compose up -d --build email-service
+> ```
+>
+> Isso remove somente o banco do Email Service. Não use
+> `docker compose down -v`, que também pode apagar os outros volumes. A conexão
+> do serviço monta a URL com o SQLAlchemy, então senhas com caracteres especiais
+> não devem ser codificadas manualmente como `%40`.
 
 Antes de preencher o banco, execute `npx prisma db seed` na pasta
 `PrimeMotors-backend`. O seed apaga dados de várias tabelas antes de recriá-los;

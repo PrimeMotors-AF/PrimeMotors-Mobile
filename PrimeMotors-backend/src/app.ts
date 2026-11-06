@@ -21,6 +21,7 @@ import prisma from "./config/database";
 import { redisClient } from "./config/redis";
 import userGarageRoutes from "./routes/userGarageRoutes";
 import { apiRateLimit } from "./middlewares/rateLimit";
+import internalRoutes from "./routes/internalRoutes";
 
 const app = express();
 app.set("trust proxy", "uniquelocal");
@@ -57,6 +58,7 @@ app.use(apiRateLimit);
 app.use("/auth", authRoutes);
 app.use("/users", authMiddleware, userRoutes);
 app.use("/garage", userGarageRoutes);
+app.use("/internal", internalRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/cars", carsRoutes);
 app.use("/test-drives", testDriveRoutes);

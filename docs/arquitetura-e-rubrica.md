@@ -13,9 +13,11 @@ O repositório contém:
 - `Mobile`: cliente Expo/React Native, também exportado para web.
 - `PrimeMotors-backend`: API TypeScript/Express, Prisma e testes Jest.
 - `PrimeMotors-docker`: composição de MySQL, Redis, API e frontend web.
-- `PrimeMotors-Email-Service`: diretório de serviço separado. No Compose
-  inspecionado deste diretório consta somente seu MySQL; não há evidência
-  suficiente aqui para documentar a implementação do consumidor de e-mail.
+- `PrimeMotors-Email-Service`: API FastAPI separada para emails de proposta,
+  com consumer do Redis Stream e MySQL próprio. O Compose principal integra
+  backend, Redis, consumer/API e banco do serviço. O Compose isolado do serviço
+  ainda inicia somente seu MySQL. O fluxo e os passos operacionais estão em
+  [`email-service.md`](./email-service.md).
 
 O backend possui módulos de autenticação, usuários, catálogo de veículos,
 favoritos, propostas e test drives, mas todos compartilham um processo e um
@@ -31,10 +33,15 @@ flowchart LR
   visitante[Visitante / comprador]
   administrador[Administrador]
   sistema[Prime Motors]
-  email[Serviço de e-mail separado<br/>integração/consumidor a confirmar]
+  stream[(Redis Stream)]
+  consumer[Consumer do serviço de email]
+  email[API de e-mail separada<br/>FastAPI + MySQL próprio]
   visitante -->|navega, cadastra-se, favorita,<br/>propõe compra e agenda visita| sistema
   administrador -->|analisa propostas| sistema
-  sistema -.->|evento de proposta via Redis Stream| email
+  sistema -->|publica evento de proposta| stream
+  stream -->|IDs; consumer group| consumer
+  consumer -->|busca dados via endpoint interno autenticado| sistema
+  consumer -->|processa evento| email
 ```
 
 ### C2 — Containers
@@ -46,14 +53,19 @@ flowchart LR
   api[Backend<br/>Node.js + Express + Prisma]
   mysql[(MySQL 8<br/>dados transacionais)]
   redis[(Redis 7<br/>cache, rate limit, eventos)]
-  consumidor[Serviço de e-mail<br/>fora do Compose principal]
+  consumer[Consumer Redis<br/>no serviço de email]
+  consumidor[API de e-mail<br/>FastAPI]
+  emailMysql[(MySQL do serviço<br/>propostas e rate limit)]
 
   cliente -->|HTTP(S), JSON| nginx
   nginx -->|/API| api
   cliente -.->|API URL direta no modo local| api
   api -->|SQL via Prisma| mysql
   api -->|cache, limites, Pub/Sub e Stream| redis
-  redis -.->|Stream email.confirmations| consumidor
+  redis -->|evento contém apenas IDs| consumer
+  consumer -->|busca payload pelo backend| api
+  consumer -->|controller e SMTP| consumidor
+  consumidor -->|SQL| emailMysql
 ```
 
 No Compose principal, a API aguarda os health checks de MySQL e Redis; o
@@ -70,7 +82,7 @@ failover de banco.
 | ADR-001 | Manter inicialmente um monólito modular Express, com módulos por domínio. | As rotas, controllers e serviços estão no mesmo backend e compartilham dados/transações. Evita o custo operacional de separar serviços antes de haver necessidade comprovada. A separação exige limites de módulo e interfaces explícitas. |
 | ADR-002 | Usar MySQL como fonte transacional e Prisma como camada de persistência. | O schema Prisma define relações, unicidade e enums; as migrations existentes e a configuração do Compose são MySQL. O adaptador aceita URLs `mysql://` e `mariadb://`. Consequência: migrations e backups precisam ser geridos para MySQL compatível. |
 | ADR-003 | Usar Redis para cache de leitura, rate limiting e integração assíncrona de propostas. | Há cache-aside de carros com TTL configurável, limite de requisições e Redis Stream/Outbox. Redis não substitui MySQL como fonte de verdade. A API atual falha fechada no rate limiter quando Redis indisponibiliza e falha aberta no cache de leitura. |
-| ADR-004 | Registrar proposta e evento Outbox na mesma transação e publicar depois no Redis Stream. | Evita confirmar proposta sem registrar a intenção de notificar. Dispatcher usa lease e retry exponencial; consumidores devem ser idempotentes. O consumidor de e-mail e o fluxo de confirmação precisam ser validados separadamente. |
+| ADR-004 | Registrar proposta e evento Outbox na mesma transação e publicar depois no Redis Stream. | Evita confirmar proposta sem registrar a intenção de notificar. Dispatcher usa lease e retry exponencial. O consumer do serviço lê o evento com IDs, busca o payload por rota interna autenticada e processa o email. Usa consumer group, recuperação de pendências e `XACK` após sucesso; ver [`email-service.md`](./email-service.md). |
 
 ADRs são registros iniciais inferidos do código e das configurações atuais. A
 equipe deve aprová-los e mantê-los conforme a arquitetura evoluir.
@@ -98,11 +110,11 @@ flowchart LR
 ```
 
 Estes são **subdomínios e contextos conceituais propostos** para organizar o
-monólito; não significam que já existam bancos, equipes ou serviços isolados
-por contexto. `User`, `Car`, `Garage` (proposta), `Favorite` e `TestDrive` estão
-no mesmo schema relacional. A integração de notificação passa pelo evento
-Outbox/Redis, enquanto os demais contextos usam referências por identificadores
-e relações Prisma.
+monólito; não significam que já existam equipes isoladas por contexto.
+`User`, `Car`, `Garage` (proposta), `Favorite` e `TestDrive` estão no mesmo
+schema relacional do backend. A API de email possui MySQL separado. O backend
+publica os identificadores no Redis; o consumer busca os dados pelo endpoint
+interno autenticado do backend e processa a notificação.
 
 | Subdomínio | Classificação inicial | Responsabilidade |
 |---|---|---|
@@ -111,7 +123,7 @@ e relações Prisma.
 | Identidade e usuários | Supporting | Cadastro, login, perfil, avatar e autorização por papel. |
 | Agendamento de test drive | Supporting | Agendar, consultar, alterar e excluir horários de visita. |
 | Favoritos | Supporting | Manter a lista de carros salvos e suas anotações. |
-| Notificações | Generic/Supporting (a confirmar) | Consumir eventos de proposta e enviar comunicação; implementação não confirmada neste repositório. |
+| Notificações | Generic/Supporting (a confirmar) | Consumer do Redis Stream processa eventos de propostas; API de email envia confirmação ao usuário e aviso interno. |
 
 ### Contexto de Propostas — modelo inicial
 
@@ -186,6 +198,11 @@ alerta com o responsável pelo serviço.
   aquela requisição (comportamento fail-closed).
 - Outbox com lease, tentativas e backoff exponencial (máximo de 15 minutos);
   Stream com limite aproximado de 10.000 eventos e retenção de 30 dias.
+- A API do serviço de email persiste a proposta, mantém limite distribuído de
+  envios no MySQL próprio e registra separadamente o estado dos dois emails.
+  O consumer usa `XACK` após sucesso, com reprocessamento de pendências. A
+  garantia é at-least-once, não exactly-once; consultar
+  [`email-service.md`](./email-service.md).
 - Encerramento gracioso do servidor fecha o HTTP server e conexões Prisma/Redis.
 
 ### Lacunas / estratégia recomendada
@@ -196,9 +213,10 @@ alerta com o responsável pelo serviço.
 - Definir o que acontece quando MySQL ou Redis ficam indisponíveis e alertar
   sobre falhas de readiness; não tratar retry como solução para falhas
   permanentes.
-- Consumidor de e-mail deve usar consumer group, `XACK` após processamento,
-  deduplicação por `eventId`, retries limitados e fila/estado de mensagens
-  problemáticas. O consumidor não está demonstrado neste código.
+- Validar a operação do consumer de email: alertar sobre pendências antigas e
+  eventos na dead-letter; executar testes de falha/recuperação em integração.
+  O fluxo está implementado, mas precisa de validação end-to-end com Redis,
+  MySQL e SMTP do ambiente alvo.
 - Rever retenção/limite do Stream com base em volume, latência do consumidor e
   janela de recuperação; acompanhar Outbox pendente e eventos mais antigos.
 - Aplicar timeout nas requisições entrantes e limites de payload; revisar

@@ -8,9 +8,7 @@ const router = (0, express_1.Router)();
 router.get('/:id', userController_1.getUserController);
 router.patch('/:id', authMiddleware_1.authMiddleware, userController_1.updateUserController);
 router.delete('/:id', authMiddleware_1.authMiddleware, userController_1.deleteUserController);
-router.patch('/:id/avatar', 
-//authMiddleware,
-(req, res, next) => {
+router.patch('/:id/avatar', authMiddleware_1.authMiddleware, (req, res, next) => {
     const upload = uploadAvatar_1.uploadAvatar.fields([
         { name: 'avatar', maxCount: 1 },
         { name: 'file', maxCount: 1 },
