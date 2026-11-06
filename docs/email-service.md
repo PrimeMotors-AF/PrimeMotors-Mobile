@@ -33,17 +33,22 @@ sequenceDiagram
   participant E as Controller do serviço de Email
   participant BI as Endpoint interno do backend
   participant DB as MySQL do serviço
+  participant C as Redis de idempotência
   participant SMTP as Provedor SMTP
   B->>R: evento proposal.created (atualmente IDs)
   I->>R: XREADGROUP / recupera pendentes com XAUTOCLAIM
   I->>BI: GET /internal/proposals/{id}/email-event + X-Service-Token
   BI-->>I: dados da proposta, usuário e veículo
   I->>E: chama controller no mesmo processo
-  E->>DB: valida idempotência e reserva limite
+  E->>C: SET NX lock por proposta com TTL
+  E->>DB: verifica envio e reserva limite
   E->>SMTP: confirmação para user.email
+  E->>C: registra sucesso da confirmação com TTL
   E->>DB: marca confirmação enviada
   E->>SMTP: notificação para PROPOSAL_NOTIFICATION_EMAIL
+  E->>C: registra sucesso da notificação com TTL
   E->>DB: marca notificação enviada
+  E->>C: libera lock pertencente ao processo
   E-->>I: sucesso ou erro/limite excedido
   I->>R: XACK somente após sucesso
 ```
@@ -60,8 +65,16 @@ com backoff; uma resposta `429` usa `Retry-After`. Mensagens estruturalmente
 inválidas ou propostas que não existem são copiadas para
 `email.confirmations.dead` (sem dados pessoais) e confirmadas para não bloquear
 a fila. Isso proporciona entrega **at-least-once**, não exactly-once: a
-idempotência no MySQL evita reenvio depois de um envio marcado, mas uma queda
-entre a aceitação SMTP e a gravação dessa marca pode ocasionar duplicidade.
+idempotência usa um lock Redis por proposta (`SET NX`, TTL de 120 segundos) e
+chaves de sucesso separadas para cliente/equipe (TTL de 35 dias). Se o lock já
+estiver ocupado, o serviço responde `503` com `Retry-After` e o consumer tenta
+novamente sem confirmar a mensagem. Depois que o SMTP aceita uma mensagem, a
+chave de sucesso é gravada antes do indicador correspondente no MySQL. Assim,
+uma repetição pode reconciliar o banco sem reenviar, mesmo se a gravação no
+MySQL falhar. Os indicadores MySQL continuam sendo o registro durável; Redis
+indisponível impede o início de um envio sem proteção. Ainda existe uma pequena
+janela de falha entre o SMTP aceitar a mensagem e o Redis registrar o sucesso,
+pois não há transação distribuída com SMTP.
 
 No Compose principal, a API e o consumer Redis rodam no container
 `email-service` e o MySQL de email roda separado. O Compose isolado dentro de
@@ -75,6 +88,7 @@ desenvolvimento; para executar o fluxo integrado, use o Compose principal.
 | `src/Main.py` | Cria a aplicação FastAPI e registra as rotas de email. |
 | `src/routes/emailRoutes.py` | Expõe `POST /emails/proposal-created`; compara `X-Service-Token` em tempo constante e responde `401` se ausente ou incorreto. |
 | `src/services/emailStreamConsumer.py` | Cria o grupo Redis, lê mensagens novas, recupera pendentes com `XAUTOCLAIM`, consulta o endpoint interno do backend, chama o controller, agenda retry e move eventos inválidos para dead-letter. Só executa `XACK` após sucesso ou dead-letter persistida. |
+| `src/services/emailIdempotencyService.py` | Adquire um lock Redis atômico por proposta, mantém chaves de sucesso por destinatário/finalidade com TTL e reconcilia falha entre o SMTP e a gravação no MySQL. |
 | `src/models/emailModel.py` | Valida o tipo do evento, os dados da proposta, carro e usuário; `EmailStr` valida o formato do email. |
 | `src/controllers/emailController.py` | Orquestra persistência, idempotência, limite de envio, SMTP e respostas HTTP; retorna `429` quando o limite é excedido e registra falhas. |
 | `src/services/emailService.py` | Monta e envia duas mensagens independentes via SMTP com STARTTLS: confirmação ao cliente e aviso interno. |
@@ -94,6 +108,8 @@ desenvolvimento; para executar o fluxo integrado, use o Compose principal.
 | `requirements-consumer.txt` | Dependências do cliente assíncrono Redis e HTTP para o consumer. |
 | `PrimeMotors-docker/docker-compose.yml` | Conecta backend, Redis, API/consumer e MySQL do email na mesma rede interna. |
 | `tests/test_email_service.py` | Verifica destinatários distintos para cliente/equipe e rejeição de token incorreto, com SMTP simulado. |
+| `tests/test_email_idempotency_service.py` | Verifica lock com TTL, concorrência, falha Redis e chaves de sucesso. |
+| `tests/test_email_controller_idempotency.py` | Verifica que lock ocupado é retryable e que sucesso em cache reconcilia o MySQL sem reenviar. |
 | `README.md` | Resumo de configuração, limites e aplicação de migrations. |
 
 ## Limites de envio
@@ -119,9 +135,12 @@ no MySQL compartilha os contadores entre réplicas do serviço.
 
 Os indicadores `customer_email_sent` e `notification_email_sent` permitem que
 uma chamada posterior tente novamente a mensagem que falhou depois que uma
-outra já foi marcada como enviada. Isso não é uma garantia de entrega
-"exactly-once": SMTP e banco não participam da mesma transação distribuída, e a
-integração chamadora deve controlar reentregas e concorrência.
+outra já foi marcada como enviada. O lock Redis evita processamento simultâneo
+da mesma proposta; os marcadores de sucesso (35 dias) auxiliam a recuperação
+após uma falha no commit do MySQL. Isso não é uma garantia de entrega
+"exactly-once": SMTP e banco/Redis não participam da mesma transação distribuída,
+e ainda pode haver duplicidade se o processo cair depois que o SMTP aceitar a
+mensagem, mas antes de o Redis confirmar o sucesso.
 
 ## Segurança e operação
 
