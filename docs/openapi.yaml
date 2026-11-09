@@ -170,7 +170,7 @@ paths:
                 avatarUrl: { type: [string, "null"] }
       responses:
         "200": { description: Avatar atualizado ou removido }
-        "400": { description: Arquivo ausente, inválido ou acima de 5 MB }
+        "400": { description: "Arquivo ausente, inválido ou acima de 5 MB" }
         "403": { description: Usuário não corresponde ao token }
   /favorites/{id}:
     get:

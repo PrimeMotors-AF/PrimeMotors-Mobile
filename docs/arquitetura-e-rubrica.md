@@ -175,16 +175,16 @@ failover ou recuperação de desastre.
 
 ### SLOs/SLIs propostos (não medidos nem garantidos atualmente)
 
-| SLI | SLO inicial sugerido | Como medir |
-|---|---|---|
-| Disponibilidade de `GET /health/ready` e operações de leitura principais | 99,5% por mês | Probes externos bem-sucedidos / probes totais; excluir manutenção somente se formalmente acordado. |
-| Latência da API para leituras comuns | p95 ≤ 500 ms e p99 ≤ 1 s | Histograma de duração HTTP separado por rota e status; excluir transferência de mídia externa. |
-| Latência de operações de escrita | p95 ≤ 800 ms e p99 ≤ 1,5 s | Histograma por rota de cadastro, proposta, favorito e agendamento. |
-| Publicação de evento de proposta | 99% publicados em até 1 minuto | Tempo entre criação do Outbox e `publishedAt`; contar pendências e retries. |
+As metas gerais de disponibilidade, latência e Core Web Vitals estão
+centralizadas em
+[`QUALITY_RESILIENCE_OBSERVABILITY.md`](../QUALITY_RESILIENCE_OBSERVABILITY.md)
+para evitar definições conflitantes. Elas são propostas, ainda não medidas nem
+garantidas. Instrumentar e estabelecer uma linha de base antes de assumir esses
+objetivos.
 
-Instrumentar antes de assumir os objetivos. Estabelecer janela de observação
-inicial (por exemplo, 30 dias), tráfego de referência, exclusões e política de
-alerta com o responsável pelo serviço.
+| SLI adicional | SLO inicial sugerido | Como medir |
+|---|---|---|
+| Publicação de evento de proposta | 99% publicados em até 1 minuto | Tempo entre criação do Outbox e `publishedAt`; contar pendências e retries. |
 
 ### Resiliência já observada
 
@@ -245,27 +245,36 @@ alerta com o responsável pelo serviço.
 ### Estado observado
 
 O backend oferece `npm test`, `npm run lint` e `npm run build`; os hooks Husky
-executam testes em commit e push. O Dockerfile cria build da API e o Compose
-constrói os serviços. **Não foi localizado pipeline de CI/CD versionado em
-`.github/workflows` nem configuração equivalente na raiz analisada.** Hooks
-locais não substituem CI e não comprovam execução/deploy remoto.
+executam testes em commit e push. O workflow
+[`ci-cd.yml`](../.github/workflows/ci-cd.yml) executa esses testes, valida o
+OpenAPI e constrói a imagem do backend em pull requests e pushes para qualquer
+branch. O job de deploy é manual, depende do sucesso da validação e do
+ambiente protegido `production`; sincroniza apenas arquivos versionados
+(excluindo certificados) e executa `docker compose up --build -d --wait`.
 
-### Pipeline recomendado
+Para habilitar o deploy, configure no ambiente GitHub `production` as variáveis
+`DEPLOY_HOST`, `DEPLOY_USER` e `DEPLOY_PATH` (caminho absoluto no servidor), e
+os secrets `DEPLOY_SSH_PRIVATE_KEY` e `DEPLOY_KNOWN_HOSTS`. O host precisa ter
+Docker com Compose v2 e acesso SSH; crie previamente nesse caminho
+`PrimeMotors-docker/.env` e `PrimeMotors-backend/.env` com valores próprios e
+válidos. Os arquivos `.env` não são transferidos pelo workflow. Configure as
+regras de aprovação do environment `production` antes de usar em produção.
+Nenhum servidor, segredo ou credencial de deploy é presumido ou incluído no
+repositório.
 
-1. Em pull request e push, instalar dependências de cada componente com
-   `npm ci`; no backend executar geração do cliente Prisma, testes, lint e
-   build. Acrescentar validação OpenAPI.
-2. Construir as imagens versionadas por commit; não publicar segredos em logs
-   nem na imagem. Usar secrets do ambiente de CI para credenciais.
-3. Após merge na branch de release, publicar imagens imutáveis no registry e
-   fazer deploy em homologação.
-4. Executar smoke test de `/health/ready`, leitura do catálogo, login de teste
-   e criação/consumo controlado de proposta; promover para produção com
-   aprovação se exigida.
-5. Executar migrations compatíveis antes de ativar código que dependa delas.
+### Fluxo de entrega
+
+1. Em pull requests e pushes, instalar dependências do backend, gerar o cliente
+   Prisma, executar testes, lint, build, validação OpenAPI e build da imagem
+   Docker.
+2. Para deploy, executar manualmente o workflow com `deploy: true`; a aprovação
+   do environment `production` pode exigir revisão humana.
+3. O host compila e atualiza os serviços Compose e aguarda os health checks.
+   Verificar também leitura do catálogo e fluxos controlados após o deploy.
+4. Executar migrations compatíveis antes de ativar código que dependa delas.
    Preferir mudanças expand/contract para permitir reversão da aplicação.
 
-**Exemplo mínimo de comandos para os jobs do backend:**
+**Comandos executados no job de validação do backend:**
 
 ```sh
 npm ci
@@ -279,15 +288,16 @@ Executar na pasta `PrimeMotors-backend`; o ambiente de CI deve fornecer as
 variáveis necessárias de forma segura, sem apontar para dados de produção nos
 testes.
 
-### Estratégia de deploy e rollback recomendada
+### Estratégia de deploy e rollback
 
-Para a infraestrutura atual, adotar implantação simples com imagem identificada
-por SHA, health check e atualização controlada. Antes do deploy, registrar a
-imagem e versão de schema atuais; depois de cada etapa, verificar readiness e
-smoke tests. Se falhar, restaurar a imagem anterior e investigar migrations.
-Rollback de código não desfaz migrations destrutivas: usar alterações
-compatíveis e plano separado de restauração/roll-forward. Blue/green requer
-duas pilhas e roteamento que o Compose atual não configura.
+O workflow atual reconstrói os serviços no host pelo Compose; ele não publica
+imagens em registry nem implementa rollback automático. Antes de um deploy,
+registrar o commit e versão de schema atuais; verificar readiness e smoke tests
+após a atualização. Se houver falha, retornar o código ao commit anterior e
+reconstruir os serviços somente se o schema continuar compatível. Rollback de
+código não desfaz migrations destrutivas: usar alterações compatíveis e plano
+separado de restauração/roll-forward. Blue/green requer duas pilhas e
+roteamento que o Compose atual não configura.
 
 ## Runbook curto: API indisponível
 
@@ -329,6 +339,6 @@ duas pilhas e roteamento que o Compose atual não configura.
 | ADR da escolha de banco | Decisão e consequências documentadas acima. |
 | Resiliência | Parte implementada; timeouts/circuit breaker e consumidor resiliente são lacunas propostas. |
 | Observabilidade | Plano documentado; instrumentação centralizada e alertas ainda pendentes. |
-| CI/CD | Não localizado; comandos e fluxo recomendados, mas pipeline executável ainda precisa ser criado. |
-| Deploy/rollback | Estratégia simples recomendada; blue/green não está configurado. |
+| CI/CD | Workflow executável para testes, lint, build, validação OpenAPI e build Docker; deploy manual protegido e configurável por secrets/vars. |
+| Deploy/rollback | Deploy Compose manual implementado; rollback é procedimento documentado, sem automação. Blue/green não está configurado. |
 | Runbook | Procedimento inicial para indisponibilidade da API incluído. |

@@ -1,0 +1,119 @@
+name: Prime Motors CI/CD
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy manual para o ambiente production
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Testar e construir
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/primemotors
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: PrimeMotors-backend/package-lock.json
+
+      - name: Instalar dependências do backend
+        working-directory: PrimeMotors-backend
+        run: npm ci
+
+      - name: Gerar cliente Prisma
+        working-directory: PrimeMotors-backend
+        run: npx prisma generate
+
+      - name: Executar testes
+        working-directory: PrimeMotors-backend
+        run: npm test -- --runInBand
+
+      - name: Executar lint
+        working-directory: PrimeMotors-backend
+        run: npm run lint
+
+      - name: Compilar backend
+        working-directory: PrimeMotors-backend
+        run: npm run build
+
+      - name: Validar especificação OpenAPI
+        run: npx --yes @redocly/cli@1.34.5 lint --extends=minimal docs/openapi.yaml
+
+      - name: Construir imagem Docker do backend
+        run: docker build -f PrimeMotors-backend/Dockerfile -t primemotors-backend:${GITHUB_SHA} PrimeMotors-backend
+
+  deploy:
+    name: Deploy Compose manual
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    environment: production
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Validar configuração e preparar SSH
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "DEPLOY_HOST inválido"; exit 1; }
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "DEPLOY_USER inválido"; exit 1; }
+          [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ && "$DEPLOY_PATH" != *".."* ]] || { echo "DEPLOY_PATH deve ser absoluto e não pode conter '..'"; exit 1; }
+          test -n "$DEPLOY_SSH_PRIVATE_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -m 700 -d "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/ssh/id_deploy"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/id_deploy" "$RUNNER_TEMP/ssh/known_hosts"
+
+      - name: Sincronizar arquivos versionados
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/ssh/id_deploy" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
+          git ls-files -z | rsync -az --from0 --files-from=- \
+            --exclude='PrimeMotors-docker/certs/***' \
+            -e "ssh -i $RUNNER_TEMP/ssh/id_deploy -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts -o StrictHostKeyChecking=yes" \
+            ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+      - name: Atualizar serviços e aguardar health checks
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/ssh/id_deploy" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH/PrimeMotors-docker' && docker compose up --build -d --wait"
