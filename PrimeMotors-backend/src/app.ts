@@ -45,13 +45,28 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health/ready", async (_req, res) => {
-  try {
-    await Promise.all([prisma.$queryRaw`SELECT 1`, redisClient.ping()]);
-    return res.status(200).json({ status: "ready" });
-  } catch (error) {
-    console.error("Backend database/Redis readiness check failed:", error);
+  const checks = await Promise.allSettled([
+    prisma.$queryRaw`SELECT 1`,
+    redisClient.ping(),
+  ]);
+  const dependencies = ["database", "redis"];
+  const failedDependencies: string[] = [];
+
+  checks.forEach((result, index) => {
+    if (result.status === "rejected") {
+      failedDependencies.push(dependencies[index]);
+      console.error(
+        `Readiness check failed for ${dependencies[index]}:`,
+        result.reason,
+      );
+    }
+  });
+
+  if (failedDependencies.length > 0) {
     return res.status(503).json({ status: "unavailable" });
   }
+
+  return res.status(200).json({ status: "ready" });
 });
 
 app.use(apiRateLimit);
