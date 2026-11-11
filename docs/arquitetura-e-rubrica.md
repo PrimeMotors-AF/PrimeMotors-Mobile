@@ -24,7 +24,7 @@ favoritos, propostas e test drives, mas todos compartilham um processo e um
 banco. A descrição adequada hoje é **monólito modular**, não microserviços
 independentes. O outbox/Redis integra a publicação de eventos de propostas.
 
-## 1. Arquitetura: C4 inicial
+## 1. Arquitetura: modelo C4 inicial
 
 ### C1 — Contexto
 
@@ -32,48 +32,71 @@ independentes. O outbox/Redis integra a publicação de eventos de propostas.
 flowchart LR
   visitante[Visitante / comprador]
   administrador[Administrador]
-  sistema[Prime Motors]
-  stream[(Redis Stream)]
-  consumer[Consumer do serviço de email]
-  email[API de e-mail separada<br/>FastAPI + MySQL próprio]
-  visitante -->|navega, cadastra-se, favorita,<br/>propõe compra e agenda visita| sistema
-  administrador -->|analisa propostas| sistema
-  sistema -->|publica evento de proposta| stream
-  stream -->|IDs; consumer group| consumer
-  consumer -->|busca dados via endpoint interno autenticado| sistema
-  consumer -->|processa evento| email
+  plataforma[Prime Motors<br/>plataforma de compra e gestão de veículos]
+  email[Serviço de notificações<br/>FastAPI]
+  cloudinary[Cloudinary<br/>serviço externo de imagens]
+  smtp[Provedor SMTP]
+
+  visitante -->|navega, cadastra-se, favorita,<br/>faz propostas e agenda test drives| plataforma
+  administrador -->|administra usuários e analisa propostas| plataforma
+  plataforma -->|solicita notificação de proposta| email
+  email -->|consulta detalhes da proposta<br/>por endpoint interno autenticado| plataforma
+  plataforma -->|armazena imagens de perfil| cloudinary
+  email -->|envia confirmação e aviso de proposta| smtp
 ```
 
 ### C2 — Containers
 
 ```mermaid
 flowchart LR
-  cliente[Mobile / Web<br/>Expo + React Native]
-  nginx[Nginx<br/>conteúdo web e proxy]
-  api[Backend<br/>Node.js + Express + Prisma]
-  mysql[(MySQL 8<br/>dados transacionais)]
-  redis[(Redis 7<br/>cache, rate limit, eventos)]
-  consumer[Consumer Redis<br/>no serviço de email]
-  consumidor[API de e-mail<br/>FastAPI]
-  emailMysql[(MySQL do serviço<br/>propostas e rate limit)]
+  visitante[Visitante / comprador]
+  administrador[Administrador]
+  dispositivo[App Expo nativo<br/>Android / iOS]
+  cloudinary[Cloudinary<br/>armazenamento de imagens]
+  smtp[Provedor SMTP]
 
-  cliente -->|HTTP(S), JSON| nginx
-  nginx -->|/API| api
-  cliente -.->|API URL direta no modo local| api
+  subgraph compose["Implantação principal — PrimeMotors-docker"]
+    mobile[Nginx + aplicação web<br/>export web do Expo em Mobile]
+    api[API monólito modular<br/>Node.js + Express + Prisma]
+    mysql[(MySQL 8<br/>dados transacionais)]
+    redis[(Redis 7<br/>cache, rate limit, Pub/Sub e Stream)]
+    email[Serviço de e-mail<br/>FastAPI + consumer Redis Stream]
+    emailMysql[(MySQL do serviço<br/>dados de e-mail e rate limit)]
+  end
+
+  subgraph foraCompose["Aplicação do repositório não incluída no Compose principal"]
+    frontend[Frontend React + Vite<br/>PrimeMotors-FrontEnd]
+  end
+
+  visitante -->|"HTTP(S)"| mobile
+  administrador -->|"HTTP(S)"| mobile
+  visitante -.->|se disponível em deploy separado| frontend
+  administrador -.->|se disponível em deploy separado| frontend
+  mobile -->|arquivos web; proxy das rotas da API| api
+  dispositivo -->|HTTP/JSON; URL da API configurada| api
+  frontend -.->|HTTP/JSON; integração e deploy separados| api
   api -->|SQL via Prisma| mysql
-  api -->|cache, limites, Pub/Sub e Stream| redis
-  redis -->|evento contém apenas IDs| consumer
-  consumer -->|busca payload pelo backend| api
-  consumer -->|controller e SMTP| consumidor
-  consumidor -->|SQL| emailMysql
+  api -->|cache, rate limit, Pub/Sub e publicação no Stream| redis
+  redis -->|eventos de proposta com IDs| email
+  email -->|busca dados pelo endpoint interno autenticado| api
+  email -->|SQL via SQLAlchemy| emailMysql
+  api -->|upload de imagens de perfil| cloudinary
+  email -->|envio de e-mails| smtp
 ```
 
-No Compose principal, a API aguarda os health checks de MySQL e Redis; o
-frontend aguarda a prontidão da API. O endpoint `GET /health/ready` verifica
-MySQL e Redis. O Nginx entrega o build web e encaminha as chamadas de API. Isso
-descreve uma implantação em containers, não uma topologia de alta
-disponibilidade: o Compose observado não define réplicas, balanceador ou
-failover de banco.
+O container `mobile` do Compose é construído a partir de `Mobile`: ele serve
+com Nginx o export web do Expo e encaminha rotas da API ao backend. Nginx e
+aplicação web, portanto, não são containers separados. O app Expo nativo pode
+ser executado em dispositivos, mas não é iniciado pelo Compose. O consumer de
+Redis Stream é uma tarefa em background no processo do serviço FastAPI, não um
+container independente. O `PrimeMotors-FrontEnd` (React/Vite) é outra aplicação
+presente no repositório e não integra a composição principal.
+
+Na composição principal, a API aguarda MySQL e Redis saudáveis; `mobile` aguarda
+a prontidão da API; o serviço de e-mail depende do seu MySQL, Redis e backend.
+O endpoint `GET /health/ready` da API verifica MySQL e Redis. O Compose descreve
+uma implantação em containers, não uma topologia de alta disponibilidade: não
+define réplicas, balanceador ou failover de banco.
 
 ### ADRs iniciais
 
@@ -83,9 +106,35 @@ failover de banco.
 | ADR-002 | Usar MySQL como fonte transacional e Prisma como camada de persistência. | O schema Prisma define relações, unicidade e enums; as migrations existentes e a configuração do Compose são MySQL. O adaptador aceita URLs `mysql://` e `mariadb://`. Consequência: migrations e backups precisam ser geridos para MySQL compatível. |
 | ADR-003 | Usar Redis para cache de leitura, rate limiting e integração assíncrona de propostas. | Há cache-aside de carros com TTL configurável, limite de requisições e Redis Stream/Outbox. Redis não substitui MySQL como fonte de verdade. A API atual falha fechada no rate limiter quando Redis indisponibiliza e falha aberta no cache de leitura. |
 | ADR-004 | Registrar proposta e evento Outbox na mesma transação e publicar depois no Redis Stream. | Evita confirmar proposta sem registrar a intenção de notificar. Dispatcher usa lease e retry exponencial. O consumer do serviço lê o evento com IDs, busca o payload por rota interna autenticada e processa o email. Usa consumer group, recuperação de pendências e `XACK` após sucesso; ver [`email-service.md`](./email-service.md). |
+| ADR-005 | Implementar o serviço especializado de notificações por e-mail em Python, com FastAPI. | O serviço já possui API HTTP, validação de payload com Pydantic, consumer assíncrono de Redis Stream e persistência/migrations com SQLAlchemy/Alembic. Python mantém esse fluxo como serviço independente do monólito TypeScript. Consequência: a operação mantém dois runtimes e ecossistemas de dependências, que devem ser atualizados, testados e monitorados separadamente. |
 
 ADRs são registros iniciais inferidos do código e das configurações atuais. A
 equipe deve aprová-los e mantê-los conforme a arquitetura evoluir.
+
+#### ADR-005 — Python no serviço de notificações por e-mail
+
+- **Estado:** decisão atual observada; justificativa a ser validada pela equipe.
+- **Contexto:** o envio de e-mails de propostas é um fluxo assíncrono, iniciado
+  por eventos no Redis Stream, que precisa buscar os dados da proposta no
+  backend, validar o payload, controlar retries/idempotência e persistir o
+  resultado dos envios. O código do serviço está separado do backend
+  TypeScript/Express.
+- **Decisão:** manter esse serviço em Python usando FastAPI. A escolha se ajusta
+  ao escopo independente de notificações e à implementação existente: FastAPI e
+  Pydantic para a interface HTTP e validação; cliente Redis assíncrono para o
+  consumer; SQLAlchemy e Alembic para persistência e migrations; e a biblioteca
+  SMTP do Python para envio.
+- **Alternativas consideradas:** incorporar o fluxo ao backend TypeScript/
+  Express ou implementá-lo como outro serviço Node.js, reutilizando parte da
+  stack existente. Não há no repositório benchmarks que demonstrem vantagem de
+  desempenho de Python sobre essas alternativas; a decisão é baseada na
+  separação funcional e nas bibliotecas usadas pelo serviço atual.
+- **Consequências:** o serviço pode evoluir e ser implantado independentemente,
+  sem adicionar o envio de e-mail ao processo do monólito. Em contrapartida,
+  exige manutenção de dois runtimes, dependências, pipelines e práticas de
+  observabilidade; a comunicação entre serviços precisa continuar explícita e
+  autenticada. O uso de Python fica restrito a esse serviço e não implica
+  migração do backend principal.
 
 ## 2. Estilos arquiteturais e DDD
 
