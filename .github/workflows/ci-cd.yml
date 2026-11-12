@@ -54,7 +54,7 @@ jobs:
         run: npm run build
 
       - name: Validar especificação OpenAPI
-        run: npx --yes @redocly/cli@1.34.5 lint --extends=minimal docs/openapi.yaml
+        run: npx --yes @redocly/cli@1.34.5 lint --extends=minimal docs/api/openapi.yaml
 
       - name: Construir imagem Docker do backend
         run: docker build -f PrimeMotors-backend/Dockerfile -t primemotors-backend:${GITHUB_SHA} PrimeMotors-backend
