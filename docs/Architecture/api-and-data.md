@@ -2,16 +2,16 @@
 
 ## Contrato OpenAPI
 
-A especificação OpenAPI 3.1 está em [`../openapi.yaml`](../openapi.yaml). Inclui
-as rotas observadas da API principal, autenticação Bearer quando aplicável e
-schemas básicos de requisição.
+A especificação OpenAPI 3.1 está em
+[`../api/openapi.yaml`](../api/openapi.yaml). Inclui as rotas observadas da API
+principal, autenticação Bearer quando aplicável e schemas básicos de requisição.
 
 A especificação declara-se inicial: confirmar os schemas detalhados e códigos
 de resposta com os controllers antes de usá-la como contrato de geração de
 clientes. Mantê-la sincronizada com as rotas e validá-la no CI.
 
 O serviço de email e seu fluxo Redis/HTTP estão descritos em
-[`../email-service.md`](../email-service.md).
+[`../Services/email-service/email-service.md`](../Services/email-service/email-service.md).
 
 ## Persistência e integração
 

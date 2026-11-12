@@ -14,7 +14,8 @@ O repositório contém:
 - `PrimeMotors-Email-Service`: API FastAPI para emails de proposta, consumer
   Redis Stream e MySQL próprio. O Compose principal integra backend, Redis,
   consumer/API e banco do serviço; o Compose isolado inicia somente o MySQL do
-  serviço. Consulte também [email-service.md](../email-service.md).
+  serviço. Consulte também
+  [email-service.md](../Services/email-service/email-service.md).
 
 O backend contém módulos de autenticação, usuários, catálogo de veículos,
 favoritos, propostas e test drives, mas compartilha processo e banco. A

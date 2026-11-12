@@ -14,6 +14,7 @@ que ainda precisam de validação, implementação ou medição.
 | [APIs e dados](./api-and-data.md) | Contrato OpenAPI, integrações e decisões/pontos pendentes de dados. |
 | [Qualidade, resiliência e observabilidade](./quality-resilience-observability.md) | Estado observado, lacunas e plano resumido; aponta para os SLOs detalhados. |
 | [Entrega e operação](./delivery-and-operations.md) | CI/CD, deploy, rollback e runbook de indisponibilidade da API. |
+| [CI do Mobile](./mobile-ci-cd.md) | Gatilhos, validação do export Expo e relação com o deploy Compose. |
 
 ## Atendimento à rubrica
 
@@ -22,14 +23,14 @@ que ainda precisam de validação, implementação ou medição.
 | C4 de contexto e containers | Diagramas iniciais em [c4-architecture.md](./c4-architecture.md). |
 | ADRs de decisões principais e banco | ADRs iniciais, sujeitos à aprovação da equipe, em [architecture-decisions.md](./architecture-decisions.md). |
 | Context map, subdomínios e DDD | Proposta conceitual alinhada aos módulos e schema em [domain-model.md](./domain-model.md); os Value Objects e o agregado ainda são candidatos. |
-| OpenAPI/Swagger | Contrato em [`../openapi.yaml`](../openapi.yaml), descrito em [api-and-data.md](./api-and-data.md). |
+| OpenAPI/Swagger | Contrato em [`../api/openapi.yaml`](../api/openapi.yaml), descrito em [api-and-data.md](./api-and-data.md). |
 | Desempenho, disponibilidade e resiliência | SLOs são propostas; há mecanismos implementados e lacunas descritas em [quality-resilience-observability.md](./quality-resilience-observability.md). |
 | Observabilidade | Plano documentado; instrumentação centralizada e alertas ainda pendentes. |
-| CI/CD | Workflow de validação e deploy manual protegido, conforme [delivery-and-operations.md](./delivery-and-operations.md). |
+| CI/CD | Workflows do backend e Mobile, com deploy manual pelo Compose; consulte [delivery-and-operations.md](./delivery-and-operations.md) e [mobile-ci-cd.md](./mobile-ci-cd.md). |
 | Deploy, rollback e runbook | Deploy Compose manual; rollback sem automação e procedimento inicial de indisponibilidade da API em [delivery-and-operations.md](./delivery-and-operations.md). |
 
 ## Referências relacionadas
 
 - [SLOs, SLIs e plano de observabilidade](../../QUALITY_RESILIENCE_OBSERVABILITY.md)
-- [Documentação do serviço de e-mail](../email-service.md)
+- [Documentação do serviço de e-mail](../Services/email-service/email-service.md)
 - [Workflow CI/CD](../../.github/workflows/ci-cd.yml)

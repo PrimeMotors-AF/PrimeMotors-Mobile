@@ -30,7 +30,7 @@ SLI adicional proposto:
   envios no MySQL próprio e registra separadamente o estado dos dois emails. O
   consumer usa `XACK` após sucesso, com reprocessamento de pendências. A
   garantia é at-least-once, não exactly-once; consulte
-  [`../email-service.md`](../email-service.md).
+  [`../Services/email-service/email-service.md`](../Services/email-service/email-service.md).
 - Encerramento gracioso do servidor fecha o HTTP server e conexões Prisma/Redis.
 
 ## Lacunas e estratégia recomendada

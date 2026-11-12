@@ -40,7 +40,7 @@ atuais. A equipe deve aprová-los e mantê-los conforme a arquitetura evoluir.
 - **Consequências:** o dispatcher usa lease e retry exponencial. O consumer lê
   eventos com IDs, busca o payload por rota interna autenticada e processa o
   email com consumer group, recuperação de pendências e `XACK` após sucesso.
-  Consulte [email-service.md](../email-service.md).
+  Consulte [email-service.md](../Services/email-service/email-service.md).
 
 ## ADR-005 — Serviço de notificações em Python
 

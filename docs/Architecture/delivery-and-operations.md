@@ -5,10 +5,22 @@
 O backend oferece `npm test`, `npm run lint` e `npm run build`; os hooks Husky
 executam testes em commit e push. O workflow
 [`ci-cd.yml`](../../.github/workflows/ci-cd.yml) executa esses testes, valida o
-OpenAPI e constrói a imagem do backend em pull requests e pushes para a branch
-`main`. O job de deploy é manual, depende do sucesso da validação e do ambiente
-protegido `production`; sincroniza apenas arquivos versionados (excluindo
-certificados) e executa `docker compose up --build -d --wait`.
+OpenAPI e constrói a imagem do backend em pull requests e pushes para `main`,
+`develop`, `feat/**` e `bugfix/**`.
+
+O workflow [`ci-cd-mobile.yml`](../../.github/workflows/ci-cd-mobile.yml) valida
+e constrói o Mobile quando há alterações em `Mobile/**` (ou no próprio
+workflow), em pull requests e pushes para os mesmos tipos de branch. Ele
+instala as dependências com `npm ci` e executa `npx expo export --platform web`.
+O projeto Mobile não possui atualmente script ou arquivos de testes
+automatizados; esse job valida o build web, enquanto os testes automatizados do
+backend permanecem no workflow principal. Consulte [CI do Mobile](./mobile-ci-cd.md)
+para detalhes de gatilhos, passos e limites.
+
+O job de deploy do workflow principal é manual, depende do sucesso da
+validação e do ambiente `production`; sincroniza apenas arquivos versionados
+(excluindo certificados) e executa `docker compose up --build -d --wait`.
+Assim, o deploy pelo Compose reconstrói também o container web do Mobile.
 
 Para habilitar o deploy, configure no ambiente GitHub `production` as variáveis
 `DEPLOY_HOST`, `DEPLOY_USER` e `DEPLOY_PATH` (caminho absoluto no servidor), e
@@ -22,14 +34,16 @@ repositório.
 
 ## Fluxo de entrega
 
-1. Em pull requests e pushes para `main`, instalar dependências do backend,
-   gerar o cliente Prisma, executar testes, lint, build, validação OpenAPI e
-   build da imagem Docker.
-2. Para deploy, executar manualmente o workflow com `deploy: true`; a aprovação
-   do environment `production` pode exigir revisão humana.
-3. O host compila e atualiza os serviços Compose e aguarda os health checks.
+1. Em pull requests e pushes para os branches configurados, o workflow do
+   backend instala dependências, gera o cliente Prisma, executa testes, lint,
+   build, validação OpenAPI e build da imagem Docker.
+2. Em alterações ao Mobile, o workflow próprio instala dependências e produz
+   o export web do Expo.
+3. Para deploy, executar manualmente o workflow principal com `deploy: true`; a
+   aprovação do environment `production` pode exigir revisão humana.
+4. O host compila e atualiza os serviços Compose e aguarda os health checks.
    Verificar também leitura do catálogo e fluxos controlados após o deploy.
-4. Executar migrations compatíveis antes de ativar código que dependa delas.
+5. Executar migrations compatíveis antes de ativar código que dependa delas.
    Preferir mudanças expand/contract para permitir reversão da aplicação.
 
 Comandos do job de validação, executados na pasta `PrimeMotors-backend`:
@@ -44,6 +58,17 @@ npm run build
 
 O ambiente de CI deve fornecer as variáveis necessárias de forma segura, sem
 apontar para dados de produção nos testes.
+
+Para validar o Mobile localmente, executar na pasta `Mobile`:
+
+```sh
+npm ci
+npx expo export --platform web
+```
+
+O Mobile não tem suíte de testes automatizados configurada no momento. O lint
+Expo e o type-check TypeScript ainda apontam erros existentes no código e não
+são etapas bloqueantes do workflow até que essa base seja corrigida.
 
 ## Deploy e rollback
 
