@@ -3,6 +3,11 @@ import { redisClient } from "../config/redis";
 const CAR_CACHE_VERSION_KEY = "cache:cars:version";
 const CAR_CACHE_TTL_SECONDS = Number(process.env.CAR_CACHE_TTL_SECONDS ?? 300);
 
+type CarCacheInvalidationContext = {
+  source: string;
+  reason: string;
+};
+
 if (!Number.isInteger(CAR_CACHE_TTL_SECONDS) || CAR_CACHE_TTL_SECONDS <= 0) {
   throw new Error("CAR_CACHE_TTL_SECONDS must be a positive integer.");
 }
@@ -67,12 +72,22 @@ export async function setCachedCarResult<T>(key: string, value: T) {
   }
 }
 
-export async function invalidateCarCache() {
+export async function invalidateCarCache({
+  source,
+  reason,
+}: CarCacheInvalidationContext) {
   try {
     const version = await redisClient.incr(CAR_CACHE_VERSION_KEY);
-    console.info("Redis car cache invalidated", { version });
+    console.info(
+      "Car cache generation advanced; the next read will miss previous entries.",
+      { version, source, reason },
+    );
   } catch (error) {
-    console.error("Redis car cache invalidation failed", error);
+    console.error("Redis car cache invalidation failed", {
+      source,
+      reason,
+      error,
+    });
     throw error;
   }
 }

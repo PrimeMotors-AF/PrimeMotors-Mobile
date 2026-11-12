@@ -43,7 +43,7 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
 | Timeout no proxy web | Sim | Nginx: `proxy_connect_timeout` 5 s, `proxy_send_timeout` 60 s e `proxy_read_timeout` 60 s. |
 | Timeout no envio SMTP | Sim | Conexão SMTP configurada com 15 s no serviço de e-mail. |
 | Retry de eventos | Sim, em escopo específico | Dispatcher da outbox tenta publicar eventos novamente com backoff exponencial até 15 min, executa ciclos a cada 1 s e processa até 25 eventos por ciclo. O evento é persistido antes da publicação. Isso não configura retry geral das requisições HTTP. |
-| Fallback do cache | Parcial | Falha ao ler cache Redis de carros é registrada e a leitura pode seguir pelo MySQL. Erros de escrita do cache são registrados. A invalidação do cache registra e propaga o erro. |
+| Cache de carros | Parcial | Leituras usam cache-aside com TTL; falhas de leitura permitem fallback para MySQL. A geração do cache é incrementada após alterações do seed, inclusive se ele falhar após iniciar a escrita. A invalidação registra versão, origem e motivo, e propaga falhas. A API ainda não possui rotas para alterar o catálogo. |
 | Rate limiting | Sim | Limites da API e autenticação são armazenados no Redis. Se Redis falhar, o middleware responde 503; não há fallback aberto. |
 | Circuit breaker | Não identificado | Não foi encontrada implementação de circuit breaker para chamadas a dependências externas. |
 | Logs de acesso | Sim, no Nginx | Saída em stdout/stderr com status, duração, upstream e `request_id`; logs de erro em nível `warn`. |
@@ -56,6 +56,7 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
 - `PrimeMotors-backend/src/server.ts`: inicialização e encerramento do servidor.
 - `PrimeMotors-backend/src/services/proposalOutbox.ts`: retry e ciclo da outbox.
 - `PrimeMotors-backend/src/services/carCache.ts`: cache-aside e fallback de leitura.
+- `PrimeMotors-backend/prisma/seed.ts`: invalidação da geração após tentativas de alteração do catálogo.
 - `PrimeMotors-backend/src/middlewares/rateLimit.ts`: limites de requisição.
 - `Mobile/src/services/api.ts`: timeout do cliente Expo.
 - `PrimeMotors-FrontEnd/src/services/api.ts`: timeout do cliente web.
@@ -76,10 +77,14 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
    no MySQL e pode ser republicado após falha do Redis.
 4. **Fallback de cache:** falha de leitura do cache de carros permite consultar o
    MySQL, evitando que a indisponibilidade do cache interrompa essa leitura.
-5. **Health checks e reinício de containers:** o Compose espera por dependências
+5. **Invalidação de cache:** alterações do catálogo incrementam a versão global
+   em Redis. As chaves da versão anterior deixam de ser consultadas, então a
+   próxima leitura busca no MySQL e recompõe o cache. Novos fluxos de escrita do
+   catálogo devem chamar `invalidateCarCache` após alterar os dados.
+6. **Health checks e reinício de containers:** o Compose espera por dependências
    saudáveis antes de iniciar os consumidores e tenta reiniciar serviços
    configurados com `unless-stopped`.
-6. **Rate limiting:** reduz abuso e limita carga, embora dependa do Redis.
+7. **Rate limiting:** reduz abuso e limita carga, embora dependa do Redis.
 
 ### Lacunas e ações sugeridas
 

@@ -484,15 +484,29 @@ async function main() {
 }
 
 async function runSeed() {
+  let catalogMutationStarted = false;
+
   try {
     await redisClient.connect();
+    catalogMutationStarted = true;
     await main();
-    await invalidateCarCache();
     console.log("🌱 Seed finalizado");
   } catch (error) {
     console.error("Falha ao executar o seed:", error);
     process.exitCode = 1;
   } finally {
+    if (catalogMutationStarted) {
+      try {
+        await invalidateCarCache({
+          source: "prisma-seed",
+          reason: "catalog-write",
+        });
+      } catch (error) {
+        console.error("Falha ao invalidar cache após alterações do seed:", error);
+        process.exitCode = 1;
+      }
+    }
+
     try {
       if (redisClient.isOpen) {
         await redisClient.quit();
