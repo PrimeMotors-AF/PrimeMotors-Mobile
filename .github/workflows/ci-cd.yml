@@ -3,7 +3,7 @@ name: Prime Motors CI/CD
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [ main, develop, 'feat/**', 'bugfix/**' ]
   workflow_dispatch:
     inputs:
       deploy:
