@@ -8,10 +8,14 @@ const port = Number(process.env.PORT) || 3000;
 
 async function startServer() {
   await redisClient.connect();
+  await prisma.$queryRaw`SELECT 1`;
+  console.info("Database connection verified.");
+
   const proposalSubscriber = await startProposalEventSubscriber();
   const stopProposalOutboxDispatcher = startProposalOutboxDispatcher();
+  console.info("Proposal outbox dispatcher started.");
   const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Servidor online na porta ${port}`);
+    console.info(`Servidor online na porta ${port}.`);
   });
 
   const shutdown = (signal: NodeJS.Signals) => {
@@ -30,6 +34,7 @@ async function startServer() {
           if (error) {
             throw error;
           }
+          console.info("Servidor e conexões encerrados corretamente.");
         } catch (shutdownError) {
           console.error("Falha ao encerrar conexões:", shutdownError);
           process.exitCode = 1;

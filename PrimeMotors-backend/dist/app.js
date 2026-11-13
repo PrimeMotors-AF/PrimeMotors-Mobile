@@ -18,7 +18,10 @@ const testDriveRoutes_1 = __importDefault(require("./routes/testDriveRoutes"));
 const database_1 = __importDefault(require("./config/database"));
 const redis_1 = require("./config/redis");
 const userGarageRoutes_1 = __importDefault(require("./routes/userGarageRoutes"));
+const rateLimit_1 = require("./middlewares/rateLimit");
+const internalRoutes_1 = __importDefault(require("./routes/internalRoutes"));
 const app = (0, express_1.default)();
+app.set("trust proxy", "uniquelocal");
 app.use(express_1.default.json());
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
@@ -43,9 +46,11 @@ app.get("/health/ready", async (_req, res) => {
         return res.status(503).json({ status: "unavailable" });
     }
 });
+app.use(rateLimit_1.apiRateLimit);
 app.use("/auth", authRoutes_1.default);
 app.use("/users", authMiddleware_1.authMiddleware, userRoutes_1.default);
 app.use("/garage", userGarageRoutes_1.default);
+app.use("/internal", internalRoutes_1.default);
 app.use("/favorites", favoriteRoutes_1.default);
 app.use("/cars", carRoutes_1.default);
 app.use("/test-drives", testDriveRoutes_1.default);
