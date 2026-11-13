@@ -7,19 +7,32 @@ info:
     Confirmar schemas detalhados e códigos de resposta com os controllers antes
     de usar como contrato de geração de clientes.
 servers:
-  - url: http://localhost:3000
+  - url: http://{host}:{port}
     description: Desenvolvimento local
+    variables:
+      host:
+        default: localhost
+      port:
+        default: "3000"
 tags:
   - name: Health
+    description: Verificação de disponibilidade e integridade do backend.
   - name: Auth
+    description: Cadastro e autenticação de usuários.
   - name: Cars
+    description: Consulta de veículos.
   - name: Users
+    description: Consulta e gerenciamento de perfis de usuário.
   - name: Favorites
+    description: Gerenciamento dos veículos favoritos do usuário.
   - name: Proposals
+    description: Criação e gerenciamento de propostas de veículos.
   - name: Test drives
+    description: Agendamento e gerenciamento de test drives.
 paths:
   /:
     get:
+      operationId: healthCheck
       tags: [Health]
       summary: Verifica se o processo HTTP está respondendo
       security: []
@@ -28,6 +41,7 @@ paths:
           description: Backend respondendo
   /health/ready:
     get:
+      operationId: checkReadiness
       tags: [Health]
       summary: Verifica disponibilidade do backend, MySQL e Redis
       security: []
@@ -38,6 +52,7 @@ paths:
           description: Uma ou mais dependências indisponíveis
   /auth/users:
     post:
+      operationId: createUser
       tags: [Auth]
       summary: Cadastra usuário
       security: []
@@ -61,6 +76,7 @@ paths:
         "429": { description: Limite de requisições excedido }
   /auth/login:
     post:
+      operationId: loginUser
       tags: [Auth]
       summary: Autentica usuário
       security: []
@@ -81,6 +97,7 @@ paths:
         "429": { description: Limite de requisições excedido }
   /cars:
     get:
+      operationId: listCars
       tags: [Cars]
       summary: Lista veículos paginados
       security: []
@@ -96,6 +113,7 @@ paths:
         "500": { description: Erro ao consultar veículos }
   /cars/{id}:
     get:
+      operationId: getCarById
       tags: [Cars]
       summary: Consulta detalhes de um veículo
       security: []
@@ -109,6 +127,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/id"
     get:
+      operationId: getUserById
       tags: [Users]
       summary: Consulta perfil público do usuário
       security: []
@@ -117,6 +136,7 @@ paths:
         "400": { description: Identificador inválido }
         "404": { description: Usuário não encontrado }
     patch:
+      operationId: updateOwnUser
       tags: [Users]
       summary: Atualiza perfil do próprio usuário
       security:
@@ -139,6 +159,7 @@ paths:
         "400": { description: Dados inválidos }
         "403": { description: Usuário não corresponde ao token }
     delete:
+      operationId: deactivateOwnUser
       tags: [Users]
       summary: Desativa o próprio usuário
       security:
@@ -148,6 +169,7 @@ paths:
         "403": { description: Usuário não corresponde ao token }
   /users/{id}/avatar:
     patch:
+      operationId: updateUserAvatar
       tags: [Users]
       summary: Atualiza ou remove o avatar do próprio usuário
       security:
@@ -174,6 +196,7 @@ paths:
         "403": { description: Usuário não corresponde ao token }
   /favorites/{id}:
     get:
+      operationId: listUserFavorites
       tags: [Favorites]
       summary: Lista favoritos do usuário autenticado
       security:
@@ -187,6 +210,7 @@ paths:
         "401": { description: Não autenticado }
         "403": { description: Usuário não corresponde ao token }
     delete:
+      operationId: removeFavoriteByCarId
       tags: [Favorites]
       summary: Remove favorito pelo identificador do veículo
       description: Neste método, id corresponde ao carId da rota Express.
@@ -203,6 +227,7 @@ paths:
         "404": { description: Favorito não encontrado }
   /favorites:
     post:
+      operationId: addFavorite
       tags: [Favorites]
       summary: Adiciona veículo aos favoritos
       security:
@@ -223,6 +248,7 @@ paths:
         "409": { description: Favorito já existe }
   /favorites/toggle:
     post:
+      operationId: toggleFavorite
       tags: [Favorites]
       summary: Alterna favorito de veículo
       security:
@@ -246,6 +272,7 @@ paths:
         "403": { description: userId não corresponde ao token }
   /favorites/{id}/message:
     patch:
+      operationId: updateFavoriteMessage
       tags: [Favorites]
       summary: Atualiza anotação do favorito
       security:
@@ -266,6 +293,7 @@ paths:
         "404": { description: Favorito não encontrado }
   /garage/proposals:
     post:
+      operationId: createProposal
       tags: [Proposals]
       summary: Cria proposta para veículo
       security:
@@ -288,6 +316,7 @@ paths:
         "409": { description: Já existe proposta pendente }
   /garage/admin/proposals:
     get:
+      operationId: listAdminProposals
       tags: [Proposals]
       summary: Lista propostas para administrador
       security:
@@ -298,6 +327,7 @@ paths:
         "403": { description: Papel de administrador necessário }
   /garage/admin/proposals/{proposalId}/status:
     patch:
+      operationId: updateAdminProposalStatus
       tags: [Proposals]
       summary: Atualiza status de proposta como administrador
       security:
@@ -326,6 +356,7 @@ paths:
         "404": { description: Proposta não encontrada }
   /garage/admin/proposals/{proposalId}:
     delete:
+      operationId: archiveAdminProposal
       tags: [Proposals]
       summary: Arquiva proposta como administrador
       security:
@@ -342,6 +373,7 @@ paths:
         "404": { description: Proposta não encontrada }
   /garage/{id}:
     get:
+      operationId: listUserProposals
       tags: [Proposals]
       summary: Lista propostas do usuário autenticado
       security:
@@ -355,6 +387,7 @@ paths:
         "401": { description: Não autenticado }
         "403": { description: Usuário não corresponde ao token }
     put:
+      operationId: updateOwnProposal
       tags: [Proposals]
       summary: Atualiza valor ou mensagem de proposta própria
       security:
@@ -381,6 +414,7 @@ paths:
         "403": { description: Proposta pertence a outro usuário }
         "404": { description: Proposta não encontrada }
     delete:
+      operationId: deleteOwnProposal
       tags: [Proposals]
       summary: Exclui proposta própria
       security:
@@ -397,6 +431,7 @@ paths:
         "404": { description: Proposta não encontrada }
   /test-drives:
     post:
+      operationId: createTestDrive
       tags: [Test drives]
       summary: Agenda test drive
       security:
@@ -419,6 +454,7 @@ paths:
         "409": { description: Agendamento duplicado }
   /test-drives/user/{id}:
     get:
+      operationId: listUserTestDrives
       tags: [Test drives]
       summary: Lista test drives do próprio usuário
       security:
@@ -433,6 +469,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/id"
     put:
+      operationId: updateOwnTestDrive
       tags: [Test drives]
       summary: Atualiza data ou mensagem do agendamento próprio
       security:
@@ -451,6 +488,7 @@ paths:
         "401": { description: Não autenticado }
         "404": { description: Agendamento não encontrado para o usuário }
     delete:
+      operationId: deleteOwnTestDrive
       tags: [Test drives]
       summary: Exclui agendamento próprio
       security:
