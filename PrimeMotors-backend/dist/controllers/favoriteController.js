@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateFavoriteMessageController = exports.deleteFavoriteController = exports.createFavoriteController = exports.toggleFavoriteController = exports.listFavoritesController = void 0;
-const library_1 = require("@prisma/client/runtime/library");
+const client_1 = require("@prisma/client");
 const favoriteService_1 = require("../services/favoriteService");
 const parsePaginationParam = (value, fallback) => {
     const pageString = Array.isArray(value) ? value[0] : value;
@@ -49,7 +49,7 @@ const toggleFavoriteController = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        if (error instanceof library_1.PrismaClientKnownRequestError &&
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
             error.code === "P2002")
             return res.status(409).json({ error: "Favorito já existe." });
         return res
@@ -71,7 +71,7 @@ const createFavoriteController = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        if (error instanceof library_1.PrismaClientKnownRequestError &&
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
             error.code === "P2002")
             return res.status(409).json({ error: "Favorito já existe." });
         return res.status(500).json({ error: "Erro ao criar favorito." });

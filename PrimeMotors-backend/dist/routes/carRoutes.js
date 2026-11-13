@@ -12,6 +12,7 @@ router.get("/", async (req, res) => {
         res.json(cars);
     }
     catch (error) {
+        console.error("Erro ao buscar carros:", error);
         res.status(500).json({ error: "Erro ao buscar carros" });
     }
 });
@@ -25,6 +26,7 @@ router.get("/:id", async (req, res) => {
         res.json(car);
     }
     catch (error) {
+        console.error("Erro ao buscar detalhes do carro:", error);
         res.status(500).json({ error: "Erro ao buscar detalhes do carro" });
     }
 });

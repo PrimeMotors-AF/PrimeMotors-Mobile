@@ -6,11 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authMiddleware = (req, res, next) => {
-    const [scheme, token] = req.headers.authorization?.split(" ") || [];
-    if (!token || !/^Bearer$/i.test(scheme)) {
-        return res
-            .status(401)
-            .json({ message: "Token Não Fornecido ou Malformatado" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ message: "Token Não Fornecido" });
+    }
+    const [scheme, token] = authHeader.split(" ");
+    if (scheme !== "Bearer" || !token) {
+        return res.status(401).json({ message: "Token Malformatado" });
     }
     try {
         const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
@@ -18,6 +20,7 @@ const authMiddleware = (req, res, next) => {
         return next();
     }
     catch {
+        console.warn("JWT verification failed.");
         return res.status(401).json({ message: "Token Inválido ou Expirado!" });
     }
 };

@@ -1,51 +1,189 @@
 services:
   db:
     image: mysql:8.0
-    container_name: mysql_db
-    restart: always
+    restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h 127.0.0.1 -u\"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" \"$${MYSQL_DATABASE}\" -e 'SELECT 1' >/dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--loglevel", "notice"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
       context: ../PrimeMotors-backend
-    container_name: backend
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
+      - .env
       - ../PrimeMotors-backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SHADOW_DATABASE_URL: ${SHADOW_DATABASE_URL:-}
+      NODE_ENV: production
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      CAR_CACHE_TTL_SECONDS: ${CAR_CACHE_TTL_SECONDS:-300}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?SERVICE_TOKEN must be set}
     networks:
       - internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  frontend:
+  email-mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${EMAIL_MYSQL_ROOT_PASSWORD:?EMAIL_MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: prime_motors_email
+      MYSQL_USER: email_service
+      MYSQL_PASSWORD: ${EMAIL_MYSQL_PASSWORD:?EMAIL_MYSQL_PASSWORD must be set}
+    volumes:
+      - email_mysql_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h 127.0.0.1 -u\"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" \"$${MYSQL_DATABASE}\" -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  email-service:
     build:
-      context: ../PrimeMotors-FrontEnd
-    container_name: frontend
+      context: ../PrimeMotors-Email-Service
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn src.Main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      email-mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      MYSQL_USER: email_service
+      MYSQL_PASSWORD: ${EMAIL_MYSQL_PASSWORD:?EMAIL_MYSQL_PASSWORD must be set}
+      MYSQL_HOST: email-mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: prime_motors_email
+      EMAIL_REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      BACKEND_API_URL: http://backend:3000
+      EMAIL_REDIS_CLAIM_IDLE_MS: ${EMAIL_REDIS_CLAIM_IDLE_MS:-60000}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?SERVICE_TOKEN must be set}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PROPOSAL_NOTIFICATION_EMAIL: ${PROPOSAL_NOTIFICATION_EMAIL:-}
+      EMAIL_RATE_LIMIT_WINDOW_SECONDS: ${EMAIL_RATE_LIMIT_WINDOW_SECONDS:-3600}
+      EMAIL_RATE_LIMIT_PER_RECIPIENT: ${EMAIL_RATE_LIMIT_PER_RECIPIENT:-5}
+      EMAIL_RATE_LIMIT_GLOBAL: ${EMAIL_RATE_LIMIT_GLOBAL:-100}
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mobile:
+    build:
+      context: ../Mobile
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-}
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - ./certs:/etc/nginx/ssl:ro   # certificados SSL
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - internal
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   mysql_data:
+  redis_data:
+  email_mysql_data:
 
 networks:
   internal:

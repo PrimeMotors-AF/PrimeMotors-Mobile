@@ -1,0 +1,481 @@
+openapi: 3.1.0
+info:
+  title: Prime Motors API
+  version: 1.0.0
+  description: >-
+    Especificação inicial baseada nas rotas Express atualmente registradas.
+    Confirmar schemas detalhados e códigos de resposta com os controllers antes
+    de usar como contrato de geração de clientes.
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+tags:
+  - name: Health
+  - name: Auth
+  - name: Cars
+  - name: Users
+  - name: Favorites
+  - name: Proposals
+  - name: Test drives
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: Verifica se o processo HTTP está respondendo
+      security: []
+      responses:
+        "200":
+          description: Backend respondendo
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Verifica disponibilidade do backend, MySQL e Redis
+      security: []
+      responses:
+        "200":
+          description: Dependências prontas
+        "503":
+          description: Uma ou mais dependências indisponíveis
+  /auth/users:
+    post:
+      tags: [Auth]
+      summary: Cadastra usuário
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, cpf, cep, number]
+              properties:
+                name: { type: string, minLength: 3 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+                cpf: { type: string, description: CPF com ou sem pontuação }
+                cep: { type: string, description: CEP com ou sem pontuação }
+                number: { type: string, description: Telefone }
+      responses:
+        "201": { description: Usuário criado }
+        "400": { description: Dados inválidos ou cadastro duplicado }
+        "429": { description: Limite de requisições excedido }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Autentica usuário
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: Login realizado; retorna token e usuário }
+        "400": { description: Campos obrigatórios ausentes }
+        "401": { description: Credenciais inválidas ou usuário desativado }
+        "429": { description: Limite de requisições excedido }
+  /cars:
+    get:
+      tags: [Cars]
+      summary: Lista veículos paginados
+      security: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, default: 100 }
+      responses:
+        "200": { description: Lista de veículos }
+        "500": { description: Erro ao consultar veículos }
+  /cars/{id}:
+    get:
+      tags: [Cars]
+      summary: Consulta detalhes de um veículo
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200": { description: Detalhes do veículo }
+        "404": { description: Veículo não encontrado }
+        "500": { description: Erro ao consultar veículo }
+  /users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Users]
+      summary: Consulta perfil público do usuário
+      security: []
+      responses:
+        "200": { description: Perfil sem senha }
+        "400": { description: Identificador inválido }
+        "404": { description: Usuário não encontrado }
+    patch:
+      tags: [Users]
+      summary: Atualiza perfil do próprio usuário
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, cpf, cep, number]
+              properties:
+                name: { type: string }
+                cpf: { type: string }
+                cep: { type: string }
+                number: { type: string }
+                password: { type: string, minLength: 6 }
+      responses:
+        "200": { description: Perfil atualizado }
+        "400": { description: Dados inválidos }
+        "403": { description: Usuário não corresponde ao token }
+    delete:
+      tags: [Users]
+      summary: Desativa o próprio usuário
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Usuário desativado }
+        "403": { description: Usuário não corresponde ao token }
+  /users/{id}/avatar:
+    patch:
+      tags: [Users]
+      summary: Atualiza ou remove o avatar do próprio usuário
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar: { type: string, format: binary }
+                file: { type: string, format: binary }
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatarUrl: { type: [string, "null"] }
+      responses:
+        "200": { description: Avatar atualizado ou removido }
+        "400": { description: "Arquivo ausente, inválido ou acima de 5 MB" }
+        "403": { description: Usuário não corresponde ao token }
+  /favorites/{id}:
+    get:
+      tags: [Favorites]
+      summary: Lista favoritos do usuário autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit10"
+      responses:
+        "200": { description: Favoritos paginados }
+        "401": { description: Não autenticado }
+        "403": { description: Usuário não corresponde ao token }
+    delete:
+      tags: [Favorites]
+      summary: Remove favorito pelo identificador do veículo
+      description: Neste método, id corresponde ao carId da rota Express.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, description: Identificador do veículo }
+      responses:
+        "200": { description: Favorito removido }
+        "401": { description: Não autenticado }
+        "404": { description: Favorito não encontrado }
+  /favorites:
+    post:
+      tags: [Favorites]
+      summary: Adiciona veículo aos favoritos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [carId]
+              properties:
+                carId: { type: string }
+                message: { type: string }
+      responses:
+        "201": { description: Favorito criado }
+        "401": { description: Não autenticado }
+        "409": { description: Favorito já existe }
+  /favorites/toggle:
+    post:
+      tags: [Favorites]
+      summary: Alterna favorito de veículo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [carId]
+              properties:
+                userId: { type: string }
+                carId: { type: string }
+                message: { type: string }
+      responses:
+        "200": { description: Favorito removido }
+        "201": { description: Favorito adicionado }
+        "400": { description: carId ausente }
+        "401": { description: Não autenticado }
+        "403": { description: userId não corresponde ao token }
+  /favorites/{id}/message:
+    patch:
+      tags: [Favorites]
+      summary: Atualiza anotação do favorito
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: [string, "null"] }
+      responses:
+        "200": { description: Anotação atualizada }
+        "401": { description: Não autenticado }
+        "404": { description: Favorito não encontrado }
+  /garage/proposals:
+    post:
+      tags: [Proposals]
+      summary: Cria proposta para veículo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [carId, offeredValue]
+              properties:
+                carId: { type: string }
+                offeredValue: { type: number, minimum: 0 }
+                message: { type: string }
+      responses:
+        "201": { description: Proposta criada e evento registrado no Outbox }
+        "400": { description: Dados obrigatórios ausentes }
+        "401": { description: Não autenticado }
+        "409": { description: Já existe proposta pendente }
+  /garage/admin/proposals:
+    get:
+      tags: [Proposals]
+      summary: Lista propostas para administrador
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Lista de propostas não arquivadas }
+        "401": { description: Não autenticado }
+        "403": { description: Papel de administrador necessário }
+  /garage/admin/proposals/{proposalId}/status:
+    patch:
+      tags: [Proposals]
+      summary: Atualiza status de proposta como administrador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [EmAnalise, Aceita, Recusada]
+      responses:
+        "200": { description: Status atualizado }
+        "400": { description: Status inválido }
+        "401": { description: Não autenticado }
+        "403": { description: Papel de administrador necessário }
+        "404": { description: Proposta não encontrada }
+  /garage/admin/proposals/{proposalId}:
+    delete:
+      tags: [Proposals]
+      summary: Arquiva proposta como administrador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Proposta arquivada }
+        "401": { description: Não autenticado }
+        "403": { description: Papel de administrador necessário }
+        "404": { description: Proposta não encontrada }
+  /garage/{id}:
+    get:
+      tags: [Proposals]
+      summary: Lista propostas do usuário autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit10"
+      responses:
+        "200": { description: Propostas paginadas do usuário }
+        "401": { description: Não autenticado }
+        "403": { description: Usuário não corresponde ao token }
+    put:
+      tags: [Proposals]
+      summary: Atualiza valor ou mensagem de proposta própria
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, description: Identificador da proposta }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offeredValue]
+              properties:
+                offeredValue: { type: number, minimum: 0 }
+                message: { type: string }
+      responses:
+        "200": { description: Proposta atualizada }
+        "400": { description: Valor inválido }
+        "401": { description: Não autenticado }
+        "403": { description: Proposta pertence a outro usuário }
+        "404": { description: Proposta não encontrada }
+    delete:
+      tags: [Proposals]
+      summary: Exclui proposta própria
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, description: Identificador da proposta }
+      responses:
+        "200": { description: Proposta excluída }
+        "401": { description: Não autenticado }
+        "403": { description: Proposta pertence a outro usuário }
+        "404": { description: Proposta não encontrada }
+  /test-drives:
+    post:
+      tags: [Test drives]
+      summary: Agenda test drive
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [carId, scheduledAt]
+              properties:
+                carId: { type: string }
+                scheduledAt: { type: string, format: date-time }
+                message: { type: string }
+      responses:
+        "201": { description: Agendamento criado }
+        "400": { description: Dados ausentes ou agendamento duplicado }
+        "401": { description: Não autenticado }
+        "409": { description: Agendamento duplicado }
+  /test-drives/user/{id}:
+    get:
+      tags: [Test drives]
+      summary: Lista test drives do próprio usuário
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200": { description: Agendamentos ordenados por data }
+        "401": { description: Não autenticado }
+        "403": { description: Usuário não corresponde ao token }
+  /test-drives/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    put:
+      tags: [Test drives]
+      summary: Atualiza data ou mensagem do agendamento próprio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduledAt: { type: string, format: date-time }
+                message: { type: string }
+      responses:
+        "200": { description: Agendamento atualizado }
+        "401": { description: Não autenticado }
+        "404": { description: Agendamento não encontrado para o usuário }
+    delete:
+      tags: [Test drives]
+      summary: Exclui agendamento próprio
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Agendamento excluído }
+        "401": { description: Não autenticado }
+        "404": { description: Agendamento não encontrado para o usuário }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    limit10:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, default: 10 }

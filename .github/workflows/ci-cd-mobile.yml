@@ -1,0 +1,41 @@
+name: Prime Motors Mobile CI
+
+on:
+  pull_request:
+    branches: [ main, develop, 'feat/**', 'bugfix/**' ]
+    paths:
+      - 'Mobile/**'
+      - '.github/workflows/ci-cd-mobile.yml'
+  push:
+    branches: [ main, develop, 'feat/**', 'bugfix/**' ]
+    paths:
+      - 'Mobile/**'
+      - '.github/workflows/ci-cd-mobile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-mobile:
+    name: Validar e construir Mobile Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mobile
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Mobile/package-lock.json
+
+      - name: Instalar dependências do Mobile
+        run: npm ci
+
+      - name: Construir export web do Expo
+        run: npx expo export --platform web

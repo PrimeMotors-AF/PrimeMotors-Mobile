@@ -1,6 +1,7 @@
-import { PrismaClient, Prisma, FuelType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma, FuelType } from "@prisma/client";
+import prisma from "../src/config/database";
+import { redisClient } from "../src/config/redis";
+import { invalidateCarCache } from "../src/services/carCache";
 
 async function main() {
   await prisma.testDrive.deleteMany();
@@ -482,12 +483,45 @@ async function main() {
   }
 }
 
-main()
-  .then(() => {
+async function runSeed() {
+  let catalogMutationStarted = false;
+
+  try {
+    await redisClient.connect();
+    catalogMutationStarted = true;
+    await main();
     console.log("🌱 Seed finalizado");
-    prisma.$disconnect();
-  })
-  .catch((e) => {
-    console.error(e);
-    prisma.$disconnect();
-  });
+  } catch (error) {
+    console.error("Falha ao executar o seed:", error);
+    process.exitCode = 1;
+  } finally {
+    if (catalogMutationStarted) {
+      try {
+        await invalidateCarCache({
+          source: "prisma-seed",
+          reason: "catalog-write",
+        });
+      } catch (error) {
+        console.error("Falha ao invalidar cache após alterações do seed:", error);
+        process.exitCode = 1;
+      }
+    }
+
+    try {
+      if (redisClient.isOpen) {
+        await redisClient.quit();
+      }
+    } catch (error) {
+      console.error("Falha ao encerrar conexão Redis do seed:", error);
+      process.exitCode = 1;
+    }
+    try {
+      await prisma.$disconnect();
+    } catch (error) {
+      console.error("Falha ao encerrar conexão Prisma do seed:", error);
+      process.exitCode = 1;
+    }
+  }
+}
+
+void runSeed();

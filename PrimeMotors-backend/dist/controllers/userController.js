@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUserController = exports.updateUserController = exports.getUserController = void 0;
+exports.updateAvatar = exports.deleteUserController = exports.updateUserController = exports.getUserController = void 0;
 const userService_1 = require("../services/userService");
+const avatarUploadService_1 = require("../services/avatarUploadService");
 const getUserController = async (req, res) => {
     const { id } = req.params;
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -15,6 +16,9 @@ const getUserController = async (req, res) => {
                 .status(404)
                 .json({ message: "Usuário não encontrado no banco" });
         }
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.set("Pragma", "no-cache");
+        res.set("Expires", "0");
         return res.json(user);
     }
     catch (error) {
@@ -67,4 +71,33 @@ const deleteUserController = async (req, res) => {
     }
 };
 exports.deleteUserController = deleteUserController;
+const updateAvatar = async (req, res) => {
+    try {
+        const tokenUserId = req.user?.id;
+        const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        if (!tokenUserId || tokenUserId !== id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        const fileFromRequest = req.file ?? (req.files && !Array.isArray(req.files)
+            ? Object.values(req.files).flat()[0]
+            : undefined);
+        if (!fileFromRequest) {
+            const { avatarUrl } = req.body ?? {};
+            if (avatarUrl === null || avatarUrl === undefined) {
+                const user = await (0, userService_1.updateUserAvatarService)(id, null);
+                return res.status(200).json(user);
+            }
+            return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+        const secureUrl = await (0, avatarUploadService_1.validateAndUploadAvatar)(fileFromRequest.buffer);
+        const user = await (0, userService_1.updateUserAvatarService)(id, secureUrl);
+        return res.status(200).json(user);
+    }
+    catch (error) {
+        console.error("Erro no updateAvatar:", error);
+        const status = error instanceof Error && error.message.includes("inválido") ? 400 : 500;
+        return res.status(status).json({ message: error instanceof Error ? error.message : "Erro ao atualizar avatar" });
+    }
+};
+exports.updateAvatar = updateAvatar;
 //# sourceMappingURL=userController.js.map

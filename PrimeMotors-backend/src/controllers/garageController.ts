@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 
 const parsePaginationParam = (
@@ -39,14 +39,32 @@ export const createProposal = async (req: Request, res: Response) => {
         .status(409)
         .json({ error: "Já existe uma proposta pendente para este veículo." });
 
-    const proposal = await prisma.garage.create({
-      data: { offeredValue, message, carId, userId, status: "Pendente" }, // ✅ sem carImageUrl
+    const proposal = await prisma.$transaction(async (transaction) => {
+      const createdProposal = await transaction.garage.create({
+        data: { offeredValue, message, carId, userId, status: "Pendente" },
+      });
+
+      await transaction.proposalOutbox.create({
+        data: { proposalId: createdProposal.id },
+      });
+
+      return createdProposal;
     });
 
-    return res.status(201).json(proposal);
+    return res.status(201).json({
+      id: proposal.id,
+      date_offer: proposal.date_offer,
+      offeredValue: proposal.offeredValue,
+      message: proposal.message,
+      carImageUrl: proposal.carImageUrl,
+      status: proposal.status,
+      adminArchived: proposal.adminArchived,
+      carId: proposal.carId,
+      userId: proposal.userId,
+    });
   } catch (error: any) {
     if (
-      error instanceof PrismaClientKnownRequestError &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     )
       return res
