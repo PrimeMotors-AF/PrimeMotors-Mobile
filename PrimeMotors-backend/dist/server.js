@@ -11,10 +11,13 @@ const app_1 = __importDefault(require("./app"));
 const port = Number(process.env.PORT) || 3000;
 async function startServer() {
     await redis_1.redisClient.connect();
+    await database_1.default.$queryRaw `SELECT 1`;
+    console.info("Database connection verified.");
     const proposalSubscriber = await (0, proposalEvents_1.startProposalEventSubscriber)();
     const stopProposalOutboxDispatcher = (0, proposalOutbox_1.startProposalOutboxDispatcher)();
+    console.info("Proposal outbox dispatcher started.");
     const server = app_1.default.listen(port, '0.0.0.0', () => {
-        console.log(`🚀 Servidor online na porta ${port}`);
+        console.info(`Servidor online na porta ${port}.`);
     });
     const shutdown = (signal) => {
         console.log(`Recebido ${signal}; encerrando servidor.`);
@@ -32,6 +35,7 @@ async function startServer() {
                     if (error) {
                         throw error;
                     }
+                    console.info("Servidor e conexões encerrados corretamente.");
                 }
                 catch (shutdownError) {
                     console.error("Falha ao encerrar conexões:", shutdownError);

@@ -22,9 +22,11 @@ import { redisClient } from "./config/redis";
 import userGarageRoutes from "./routes/userGarageRoutes";
 import { apiRateLimit } from "./middlewares/rateLimit";
 import internalRoutes from "./routes/internalRoutes";
+import { requestLogger } from "./middlewares/requestLogger";
 
 const app = express();
 app.set("trust proxy", "uniquelocal");
+app.use(requestLogger);
 app.use(express.json());
 
 app.use(
