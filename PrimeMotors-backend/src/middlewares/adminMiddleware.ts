@@ -1,13 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import prisma from "../config/database";
+import { ApiError } from "../errors/ApiError";
 
 export const adminMiddleware = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) => {
   if (!req.user?.id) {
-    return res.status(401).json({ error: "Não autenticado." });
+    return next(new ApiError(401, "UNAUTHORIZED", "Não autenticado."));
   }
 
   const user = await prisma.user.findUnique({
@@ -16,7 +17,9 @@ export const adminMiddleware = async (
   });
 
   if (!user?.active || user.role !== "admin") {
-    return res.status(403).json({ error: "Acesso restrito a administradores." });
+    return next(
+      new ApiError(403, "FORBIDDEN", "Acesso restrito a administradores."),
+    );
   }
 
   return next();

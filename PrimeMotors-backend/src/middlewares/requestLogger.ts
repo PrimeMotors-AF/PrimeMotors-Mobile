@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
+import { logger } from "../utils/logger";
 
-function getRouteTemplate(req: Request): string {
+export function getRouteTemplate(req: Request): string {
   const routePath = req.route?.path;
   if (!routePath) {
     return "unmatched";
@@ -35,19 +36,14 @@ export function requestLogger(
     const durationMs =
       Number(process.hrtime.bigint() - startedAt) / 1_000_000;
 
-    console.info(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: "info",
-        event: "http.request",
-        requestId,
-        method: req.method,
-        route: getRouteTemplate(req),
-        statusCode: res.statusCode,
-        durationMs,
-        responseCompleted,
-      }),
-    );
+    logger.info("http.request", {
+      requestId,
+      method: req.method,
+      route: getRouteTemplate(req),
+      statusCode: res.statusCode,
+      durationMs,
+      responseCompleted,
+    });
   };
 
   res.once("finish", () => logRequest(true));

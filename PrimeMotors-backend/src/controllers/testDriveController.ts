@@ -1,157 +1,144 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
+import {
+  parseCreateTestDriveDto,
+  parseUpdateTestDriveDto,
+} from "../dtos/testDrive.dto";
+import { ApiError } from "../errors/ApiError";
 import prisma from "../config/database";
 
-// Captura o ID do usuário autenticado injetado pelo middleware de autenticação
-const getUserIdFromRequest = (req: Request) => req.user?.id;
-
-// ==========================================
-// 1. CRIAR AGENDAMENTO (CREATE)
-// ==========================================
-export const createTestDriveController = async (req: Request, res: Response) => {
-  const authenticatedUserId = getUserIdFromRequest(req);
-  if (!authenticatedUserId) {
-    return res.status(401).json({ error: "Não autenticado." });
+function getAuthenticatedUserId(req: Request): string {
+  if (!req.user?.id) {
+    throw new ApiError(401, "UNAUTHORIZED", "Não autenticado.");
   }
+  return req.user.id;
+}
 
-  const { carId, scheduledAt, message } = req.body;
-  if (!carId || !scheduledAt) {
-    return res.status(400).json({ error: "carId e scheduledAt são obrigatórios." });
+function handleTestDriveError(error: unknown): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    throw new ApiError(409, "CONFLICT", "Este agendamento já existe.");
+  }
+  throw error;
+}
+
+export const createTestDriveController = async (
+  req: Request,
+  res: Response,
+) => {
+  const userId = getAuthenticatedUserId(req);
+  const { carId, scheduledAt, message } = parseCreateTestDriveDto(req.body);
+  const dateFormatted = new Date(scheduledAt);
+
+  const existing = await prisma.testDrive.findFirst({
+    where: { carId, userId, scheduledAt: dateFormatted },
+  });
+  if (existing) {
+    throw new ApiError(
+      400,
+      "DUPLICATE_TEST_DRIVE",
+      "Você já possui um agendamento para este veículo neste horário.",
+    );
   }
 
   try {
-    const dateFormatted = new Date(scheduledAt);
-    const parsedCarId = String(carId);
-
-    // Valida se já existe agendamento idêntico para o mesmo usuário, carro e horário
-    const existing = await prisma.testDrive.findFirst({
-      where: { 
-        carId: parsedCarId, 
-        userId: authenticatedUserId, 
-        scheduledAt: dateFormatted 
-      },
-    });
-
-    if (existing) {
-      return res.status(400).json({ error: "Você já possui um agendamento para este veículo neste horário." });
-    }
-
     const testDrive = await prisma.testDrive.create({
-      data: { 
-        carId: parsedCarId, 
-        userId: authenticatedUserId, 
+      data: {
+        carId,
+        userId,
         scheduledAt: dateFormatted,
-        ...(message && { message: String(message).trim() })
+        ...(message ? { message: message.trim() } : {}),
       },
     });
-
     return res.status(201).json(testDrive);
-  } catch (error: any) {
-    console.error("ERRO COMPLETO DO PRISMA:", error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return res.status(409).json({ error: "Este agendamento já existe." });
-    }
-    return res.status(500).json({ error: "Erro interno ao agendar test drive." });
+  } catch (error) {
+    return handleTestDriveError(error);
   }
 };
 
-// ==========================================
-// 2. LISTAR POR USUÁRIO (READ)
-// ==========================================
-export const listTestDrivesController = async (req: Request, res: Response) => {
-  const authenticatedUserId = getUserIdFromRequest(req);
-  const requestedUserId = (req.params.userId || req.params.id) as string;
-
-  if (!authenticatedUserId) {
-    return res.status(401).json({ error: "Não autenticado." });
-  }
+export const listTestDrivesController = async (
+  req: Request,
+  res: Response,
+) => {
+  const authenticatedUserId = getAuthenticatedUserId(req);
+  const requestedUserId = String(req.params.userId ?? req.params.id ?? "");
   if (authenticatedUserId !== requestedUserId) {
-    return res.status(403).json({ error: "Acesso negado." });
+    throw new ApiError(403, "FORBIDDEN", "Acesso negado.");
   }
 
-  try {
-    const testDrives = await prisma.testDrive.findMany({
-      where: { userId: requestedUserId },
-      include: {
-        car: {
-          include: {
-            images: { take: 1 }, // Traz a primeira imagem perfeitamente para o Card
-          },
+  const testDrives = await prisma.testDrive.findMany({
+    where: { userId: requestedUserId },
+    include: {
+      car: {
+        include: {
+          images: { take: 1 },
         },
       },
-      orderBy: { scheduledAt: "asc" },
-    });
-    return res.status(200).json(testDrives);
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao buscar os agendamentos do usuário." });
-  }
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+  return res.status(200).json(testDrives);
 };
 
-// ==========================================
-// 3. ATUALIZAR AGENDAMENTO (UPDATE)
-// ==========================================
-export const updateTestDriveController = async (req: Request, res: Response) => {
-  const authenticatedUserId = getUserIdFromRequest(req);
-  if (!authenticatedUserId) {
-    return res.status(401).json({ error: "Não autenticado." });
+export const updateTestDriveController = async (
+  req: Request,
+  res: Response,
+) => {
+  const authenticatedUserId = getAuthenticatedUserId(req);
+  const id = String(req.params.id ?? "");
+  if (!id) {
+    throw new ApiError(
+      400,
+      "INVALID_TEST_DRIVE_ID",
+      "ID do agendamento é obrigatório.",
+    );
   }
 
-  const id = req.params.id as string;
-  const { scheduledAt, message } = req.body; // AJUSTE: Capturando a message vinda do formulário de edição
-
-  if (!id) return res.status(400).json({ error: "ID do agendamento é obrigatório." });
-
-  try {
-    const agendamento = await prisma.testDrive.findFirst({
-      where: { id, userId: authenticatedUserId },
-    });
-
-    if (!agendamento) {
-      return res.status(404).json({ error: "Agendamento não encontrado para este usuário." });
-    }
-
-    // AJUSTE: Atualiza a data e também a observação se ela for enviada
-    const updated = await prisma.testDrive.update({
-      where: { id },
-      data: { 
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : agendamento.scheduledAt,
-        message: message !== undefined ? String(message).trim() : agendamento.message
-      },
-    });
-
-    return res.status(200).json(updated);
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao atualizar o agendamento." });
+  const { scheduledAt, message } = parseUpdateTestDriveDto(req.body);
+  const testDrive = await prisma.testDrive.findFirst({
+    where: { id, userId: authenticatedUserId },
+  });
+  if (!testDrive) {
+    throw new ApiError(
+      404,
+      "NOT_FOUND",
+      "Agendamento não encontrado para este usuário.",
+    );
   }
+
+  const updated = await prisma.testDrive.update({
+    where: { id },
+    data: {
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : testDrive.scheduledAt,
+      message: message !== undefined ? message.trim() : testDrive.message,
+    },
+  });
+  return res.status(200).json(updated);
 };
 
-// ==========================================
-// 4. EXCLUIR AGENDAMENTO (DELETE)
-// ==========================================
-export const deleteTestDriveController = async (req: Request, res: Response) => {
-  const authenticatedUserId = getUserIdFromRequest(req);
-  if (!authenticatedUserId) {
-    return res.status(401).json({ error: "Não autenticado." });
+export const deleteTestDriveController = async (
+  req: Request,
+  res: Response,
+) => {
+  const authenticatedUserId = getAuthenticatedUserId(req);
+  const id = String(req.params.id ?? "");
+  if (!id) {
+    throw new ApiError(
+      400,
+      "INVALID_TEST_DRIVE_ID",
+      "ID do agendamento é obrigatório.",
+    );
   }
 
-  const id = req.params.id as string;
-  if (!id) return res.status(400).json({ error: "ID do agendamento é obrigatório." });
-
-  try {
-    const agendamento = await prisma.testDrive.findFirst({
-      where: { id, userId: authenticatedUserId },
-    });
-
-    if (!agendamento) {
-      return res.status(404).json({ error: "Agendamento não encontrado." });
-    }
-
-    await prisma.testDrive.delete({ where: { id } });
-    return res.status(200).json({ message: "Test drive excluído." });
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao excluir o agendamento." });
+  const testDrive = await prisma.testDrive.findFirst({
+    where: { id, userId: authenticatedUserId },
+  });
+  if (!testDrive) {
+    throw new ApiError(404, "NOT_FOUND", "Agendamento não encontrado.");
   }
+
+  await prisma.testDrive.delete({ where: { id } });
+  return res.status(200).json({ message: "Test drive excluído." });
 };

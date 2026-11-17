@@ -1,12 +1,8 @@
 # Arquitetura do sistema — C4
 
-## Escopo e estado atual
+## Escopo
 
-Esta documentação foi preparada a partir da estrutura do repositório, dos
-serviços Compose, das rotas/controllers Express e do schema Prisma. Ela não
-afirma comportamentos além dos observados.
-
-O repositório contém:
+O sistema Prime Motors contém:
 
 - `Mobile`: cliente Expo/React Native, também exportado para web.
 - `PrimeMotors-backend`: API TypeScript/Express, Prisma e testes Jest.
@@ -14,13 +10,13 @@ O repositório contém:
 - `PrimeMotors-Email-Service`: API FastAPI para emails de proposta, consumer
   Redis Stream e MySQL próprio. O Compose principal integra backend, Redis,
   consumer/API e banco do serviço; o Compose isolado inicia somente o MySQL do
-  serviço. Consulte também
+  serviço. O fluxo de notificações está detalhado em
   [email-service.md](../Services/email-service/email-service.md).
 
 O backend contém módulos de autenticação, usuários, catálogo de veículos,
 favoritos, propostas e test drives, mas compartilha processo e banco. A
-descrição adequada é **monólito modular**, não microserviços independentes. O
-Outbox/Redis integra a publicação de eventos de propostas.
+arquitetura é um **monólito modular**. O serviço de e-mail é um processo
+separado. A Outbox e o Redis Stream transportam os eventos de propostas.
 
 ## C1 — Contexto
 
@@ -72,8 +68,9 @@ flowchart LR
   dispositivo -->|HTTP/JSON; URL da API configurada| api
   frontend -.->|HTTP/JSON; integração e deploy separados| api
   api -->|SQL via Prisma| mysql
-  api -->|cache, rate limit, Pub/Sub e publicação no Stream| redis
-  redis -->|eventos de proposta com IDs| email
+  api -->|cache, rate limit, Pub/Sub e Stream; breaker no publisher do Stream| redis
+  redis -->|Redis Stream: eventos de proposta com IDs| email
+  api -.->|Redis Pub/Sub: notificação complementar| redis
   email -->|busca dados pelo endpoint interno autenticado| api
   email -->|SQL via SQLAlchemy| emailMysql
   api -->|upload de imagens de perfil| cloudinary
@@ -93,3 +90,14 @@ a prontidão da API; o serviço de e-mail depende do seu MySQL, Redis e backend.
 `GET /health/ready` verifica MySQL e Redis. O Compose descreve uma implantação
 em containers, não uma topologia de alta disponibilidade: não define réplicas,
 balanceador ou failover de banco.
+
+O publisher da Outbox protege a gravação no Redis Stream com um circuit breaker
+por processo: abre após cinco falhas consecutivas, aguarda 30 segundos e permite
+uma tentativa de sondagem em estado half-open. A Outbox mantém seu retry
+exponencial e retém os eventos até a publicação ser confirmada. O Redis Pub/Sub
+é complementar; seu subscriber registra a circulação do evento, enquanto o
+consumer do serviço de e-mail processa o Redis Stream.
+
+A API registra requisições em JSON com identificador de correlação, rota,
+status e duração. Erros HTTP usam um envelope comum com mensagem, código e
+request ID; detalhes internos são enviados aos logs, não à resposta 500.

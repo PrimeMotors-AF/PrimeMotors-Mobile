@@ -11,6 +11,7 @@ import {
   apiRateLimit,
   authRateLimit,
 } from "../../src/middlewares/rateLimit";
+import { errorHandler } from "../../src/middlewares/errorHandler";
 
 const createApp = () => {
   const app = express();
@@ -18,6 +19,7 @@ const createApp = () => {
   app.post("/auth/login", authRateLimit, (_req, res) => {
     res.sendStatus(200);
   });
+  app.use(errorHandler);
   return app;
 };
 
@@ -54,7 +56,9 @@ describe("Redis rate limiter", () => {
     expect(response.headers["retry-after"]).toBe("42");
     expect(response.body).toEqual({
       error: "Limite de requisições excedido. Tente novamente mais tarde.",
-      retryAfterSeconds: 42,
+      message: "Limite de requisições excedido. Tente novamente mais tarde.",
+      code: "RATE_LIMIT_EXCEEDED",
+      details: { retryAfterSeconds: 42 },
     });
   });
 
@@ -69,6 +73,8 @@ describe("Redis rate limiter", () => {
     expect(response.status).toBe(503);
     expect(response.body).toEqual({
       error: "Serviço temporariamente indisponível.",
+      message: "Serviço temporariamente indisponível.",
+      code: "DEPENDENCY_UNAVAILABLE",
     });
     expect(errorLog).toHaveBeenCalled();
     errorLog.mockRestore();

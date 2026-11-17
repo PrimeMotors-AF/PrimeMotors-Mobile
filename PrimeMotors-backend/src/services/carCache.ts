@@ -1,4 +1,5 @@
 import { redisClient } from "../config/redis";
+import { logger } from "../utils/logger";
 
 const CAR_CACHE_VERSION_KEY = "cache:cars:version";
 const CAR_CACHE_TTL_SECONDS = Number(process.env.CAR_CACHE_TTL_SECONDS ?? 300);
@@ -28,7 +29,7 @@ export async function getCachedCarResult<T>(key: string): Promise<T | null> {
     const cachedValue = await redisClient.get(cacheKey);
 
     if (cachedValue === null) {
-      console.info("Car cache miss; entry is absent or expired.", {
+      logger.info("car_cache.miss", {
         cacheType,
       });
       return null;
@@ -36,10 +37,10 @@ export async function getCachedCarResult<T>(key: string): Promise<T | null> {
 
     try {
       const result = JSON.parse(cachedValue) as T;
-      console.info("Car cache hit.", { cacheType });
+      logger.info("car_cache.hit", { cacheType });
       return result;
     } catch (error) {
-      console.error("Invalid JSON in Redis car cache; deleting entry", {
+      logger.error("car_cache.invalid_value", {
         cacheType,
         error,
       });
@@ -47,7 +48,7 @@ export async function getCachedCarResult<T>(key: string): Promise<T | null> {
       return null;
     }
   } catch (error) {
-    console.error("Redis car cache read failed; falling back to MySQL", {
+    logger.error("car_cache.read_failed", {
       cacheType,
       error,
     });
@@ -63,12 +64,12 @@ export async function setCachedCarResult<T>(key: string, value: T) {
     await redisClient.set(cacheKey, JSON.stringify(value), {
       EX: CAR_CACHE_TTL_SECONDS,
     });
-    console.info("Car cache entry created.", {
+    logger.info("car_cache.entry_created", {
       cacheType,
       ttlSeconds: CAR_CACHE_TTL_SECONDS,
     });
   } catch (error) {
-    console.error("Redis car cache write failed", { cacheType, error });
+    logger.error("car_cache.write_failed", { cacheType, error });
   }
 }
 
@@ -78,12 +79,13 @@ export async function invalidateCarCache({
 }: CarCacheInvalidationContext) {
   try {
     const version = await redisClient.incr(CAR_CACHE_VERSION_KEY);
-    console.info(
-      "Car cache generation advanced; the next read will miss previous entries.",
-      { version, source, reason },
-    );
+    logger.info("car_cache.generation_advanced", {
+      version,
+      source,
+      reason,
+    });
   } catch (error) {
-    console.error("Redis car cache invalidation failed", {
+    logger.error("car_cache.invalidation_failed", {
       source,
       reason,
       error,

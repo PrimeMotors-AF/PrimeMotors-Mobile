@@ -3,6 +3,7 @@ import {
   publishProposalCreated,
   trimProposalEventStream,
 } from "./proposalEvents";
+import { logger } from "../utils/logger";
 
 const DISPATCH_INTERVAL_MS = 1_000;
 const LOCK_DURATION_MS = 60_000;
@@ -52,7 +53,7 @@ async function dispatchNextEvent() {
     });
 
     if (published.count !== 1) {
-      console.error("Proposal event was published after its outbox lease expired", {
+      logger.error("proposal.outbox.lease_expired_after_publish", {
         eventId: candidate.id,
       });
     }
@@ -68,8 +69,9 @@ async function dispatchNextEvent() {
         nextAttemptAt: new Date(Date.now() + retryDelayMs),
       },
     });
-    console.error("Proposal outbox dispatch failed; retry scheduled", {
+    logger.error("proposal.outbox.retry_scheduled", {
       eventId: candidate.id,
+      retryDelayMs,
       error,
     });
   }
@@ -88,7 +90,7 @@ async function cleanupPublishedEvents() {
   try {
     await trimProposalEventStream();
   } catch (error) {
-    console.error("Proposal Redis Stream retention cleanup failed", error);
+    logger.error("proposal.outbox.stream_retention_cleanup_failed", { error });
   }
 
   let result: { count: number };
@@ -97,13 +99,13 @@ async function cleanupPublishedEvents() {
       where: { publishedAt: { lt: retentionCutoff } },
     });
   } catch (error) {
-    console.error("Proposal outbox retention cleanup failed", error);
+    logger.error("proposal.outbox.retention_cleanup_failed", { error });
     return;
   }
 
   cleanupDueAt = Date.now() + 60 * 60 * 1_000;
   if (result.count > 0) {
-    console.info("Expired published proposal outbox records removed", {
+    logger.info("proposal.outbox.expired_records_removed", {
       count: result.count,
     });
   }
@@ -122,7 +124,7 @@ async function runCycle() {
   try {
     await activeCycle;
   } catch (error) {
-    console.error("Proposal outbox dispatcher cycle failed", error);
+    logger.error("proposal.outbox.dispatch_cycle_failed", { error });
   } finally {
     activeCycle = null;
   }
@@ -135,10 +137,15 @@ export function startProposalOutboxDispatcher() {
   }, DISPATCH_INTERVAL_MS);
 
   void runCycle();
+  logger.info("proposal.outbox.dispatcher_started", {
+    intervalMs: DISPATCH_INTERVAL_MS,
+    maxEventsPerCycle: MAX_EVENTS_PER_CYCLE,
+  });
 
   return async function stopProposalOutboxDispatcher() {
     stopped = true;
     clearInterval(timer);
     if (activeCycle) await activeCycle;
+    logger.info("proposal.outbox.dispatcher_stopped");
   };
 }

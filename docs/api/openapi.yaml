@@ -3,9 +3,8 @@ info:
   title: Prime Motors API
   version: 1.0.0
   description: >-
-    Especificação inicial baseada nas rotas Express atualmente registradas.
-    Confirmar schemas detalhados e códigos de resposta com os controllers antes
-    de usar como contrato de geração de clientes.
+    Referência das principais rotas da API Express, com parâmetros, schemas de
+    entrada e respostas descritos neste documento.
 servers:
   - url: http://{host}:{port}
     description: Desenvolvimento local

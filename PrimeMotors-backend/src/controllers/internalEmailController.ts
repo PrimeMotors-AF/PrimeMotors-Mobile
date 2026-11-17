@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../config/database";
+import { ApiError } from "../errors/ApiError";
 
 export const getProposalEmailEvent = async (
   req: Request,
@@ -31,7 +32,7 @@ export const getProposalEmailEvent = async (
   });
 
   if (!proposal) {
-    return res.status(404).json({ error: "Proposta não encontrada." });
+    throw new ApiError(404, "NOT_FOUND", "Proposta não encontrada.");
   }
 
   return res.status(200).json({
