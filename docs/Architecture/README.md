@@ -6,7 +6,7 @@ Documentação da arquitetura e operação implementadas no repositório.
 
 | Documento | Conteúdo |
 |---|---|
-| [C4 — arquitetura do sistema](./c4-architecture.md) | Contexto, containers, integrações e implantação Compose. |
+| [C4 — arquitetura do sistema](./c4-architecture.md) | Contexto, containers, componentes, detalhes de código, integrações e implantação Compose. |
 | [Decisões arquiteturais](./architecture-decisions.md) | Monólito modular, persistência, Redis, eventos, circuit breaker, DTOs e erros HTTP. |
 | [Domínio e DDD](./domain-model.md) | Context map, subdomínios e modelo do contexto de Propostas. |
 | [APIs e dados](./api-and-data.md) | Contrato OpenAPI, integrações e persistência. |
