@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { timingSafeEqual } from "crypto";
 import { getProposalEmailEvent } from "../controllers/internalEmailController";
+import { ApiError } from "../errors/ApiError";
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.get("/proposals/:proposalId/email-event", (req, res, next) => {
   const providedToken = req.header("X-Service-Token");
 
   if (!expectedToken || !providedToken) {
-    return res.status(401).json({ error: "Token de serviço inválido." });
+    return next(new ApiError(401, "UNAUTHORIZED", "Token de serviço inválido."));
   }
 
   const expectedBuffer = Buffer.from(expectedToken, "utf8");
@@ -18,7 +19,7 @@ router.get("/proposals/:proposalId/email-event", (req, res, next) => {
     expectedBuffer.length !== providedBuffer.length ||
     !timingSafeEqual(expectedBuffer, providedBuffer)
   ) {
-    return res.status(401).json({ error: "Token de serviço inválido." });
+    return next(new ApiError(401, "UNAUTHORIZED", "Token de serviço inválido."));
   }
 
   void getProposalEmailEvent(req, res).catch(next);

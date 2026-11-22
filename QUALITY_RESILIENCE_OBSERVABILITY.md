@@ -41,12 +41,13 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
 | Health checks do Compose | Sim | MySQL, Redis, API e frontend web têm verificações; dependências usam `service_healthy`. Os quatro serviços usam `restart: unless-stopped`, política que não reinicia containers explicitamente parados. O health check sinaliza o estado, mas não equivale por si só a um circuit breaker ou a uma garantia de recuperação automática. |
 | Timeout no cliente Mobile | Sim | Cliente Axios do Expo: 5 s; cliente Axios em `Mobile/src/services/api.ts`: 10 s. |
 | Timeout no proxy web | Sim | Nginx: `proxy_connect_timeout` 5 s, `proxy_send_timeout` 60 s e `proxy_read_timeout` 60 s. |
+| Timeout HTTP do consumer | Sim | O serviço de e-mail limita a 10 s a consulta autenticada ao backend. |
 | Timeout no envio SMTP | Sim | Conexão SMTP configurada com 15 s no serviço de e-mail. |
-| Retry de eventos | Sim, em escopo específico | Dispatcher da outbox tenta publicar eventos novamente com backoff exponencial até 15 min, executa ciclos a cada 1 s e processa até 25 eventos por ciclo. O evento é persistido antes da publicação. Isso não configura retry geral das requisições HTTP. |
+| Retry de eventos | Sim, em escopo específico | Dispatcher da Outbox tenta publicar eventos novamente com backoff exponencial até 15 min, executa ciclos a cada 1 s e processa até 25 eventos por ciclo. O evento é persistido antes da publicação. O consumer também reagenda falhas transitórias de consulta/processamento do evento; isso não configura retry geral das requisições HTTP. |
 | Cache de carros | Parcial | Leituras usam cache-aside com TTL; falhas de leitura permitem fallback para MySQL. A geração do cache é incrementada após alterações do seed, inclusive se ele falhar após iniciar a escrita. A invalidação registra versão, origem e motivo, e propaga falhas. A API ainda não possui rotas para alterar o catálogo. |
 | Rate limiting | Sim | Limites da API e autenticação são armazenados no Redis. Se Redis falhar, o middleware responde 503; não há fallback aberto. |
-| Circuit breaker | Não identificado | Não foi encontrada implementação de circuit breaker para chamadas a dependências externas. |
-| Logs de acesso | Sim, no Nginx | Saída em stdout/stderr com status, duração, upstream e `request_id`; logs de erro em nível `warn`. |
+| Circuit breaker | Sim, em escopo específico | O publisher da Outbox protege o `XADD` do Redis Stream: abre após 5 falhas consecutivas, aguarda 30 s e permite uma sondagem half-open. Não envolve o Pub/Sub complementar nem outras operações Redis. |
+| Logs HTTP | Sim | Nginx e API registram método, rota normalizada, status, duração e request ID em stdout/stderr. O middleware de erro registra código/status e detalhe interno sem retorná-lo em respostas 500. |
 | Rotação de logs | Sim, no Compose | Para os serviços configurados: `json-file`, até 10 MB por arquivo e 3 arquivos. |
 | Métricas e monitoramento contínuo | Não identificado | Não foi encontrada instrumentação de métricas nem plataforma de dashboards/alertas no repositório. |
 
@@ -54,10 +55,12 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
 
 - `PrimeMotors-backend/src/app.ts`: endpoint de prontidão e rotas da API.
 - `PrimeMotors-backend/src/server.ts`: inicialização e encerramento do servidor.
-- `PrimeMotors-backend/src/services/proposalOutbox.ts`: retry e ciclo da outbox.
+- `PrimeMotors-backend/src/services/proposalOutbox.ts`: retry e ciclo da Outbox.
+- `PrimeMotors-backend/src/services/circuitBreaker.ts` e `proposalEvents.ts`: estados e proteção do publisher Redis Stream.
 - `PrimeMotors-backend/src/services/carCache.ts`: cache-aside e fallback de leitura.
 - `PrimeMotors-backend/prisma/seed.ts`: invalidação da geração após tentativas de alteração do catálogo.
-- `PrimeMotors-backend/src/middlewares/rateLimit.ts`: limites de requisição.
+- `PrimeMotors-backend/src/middlewares/rateLimit.ts` e `errorHandler.ts`: limites e respostas de erro HTTP.
+- `PrimeMotors-backend/src/dtos/`: DTOs e validação dos payloads de entrada.
 - `Mobile/src/services/api.ts`: timeout do cliente Expo.
 - `PrimeMotors-FrontEnd/src/services/api.ts`: timeout do cliente web.
 - `Mobile/nginx.conf`: timeouts do proxy e formato do log de acesso.
@@ -86,17 +89,13 @@ numerador e denominador; não declarar cumprimento do SLO sem esses dados.
    configurados com `unless-stopped`.
 7. **Rate limiting:** reduz abuso e limita carga, embora dependa do Redis.
 
-### Lacunas e ações sugeridas
+### Limites da implementação
 
-- Não há circuit breaker identificado. Avaliar sua inclusão para integrações
-  externas com falhas recorrentes, definindo limiares, estado half-open e
-  recuperação; não afirmar que já está aplicado.
-- O rate limiter falha fechado (503) se o Redis estiver indisponível. Validar se
-  essa decisão é apropriada para produção e documentar o comportamento esperado.
-- Adicionar métricas de duração, contagem por status, timeouts e saúde das
-  dependências para calcular os SLIs acima.
-- Definir se `/health/ready` deve incluir Redis: atualmente sim; portanto a API
-  não é considerada pronta se MySQL ou Redis estiver indisponível.
+- O rate limiter falha fechado e responde `503` quando Redis está indisponível.
+- `GET /health/ready` inclui MySQL e Redis; falha em qualquer dependência
+  resulta em `503`.
+- A API emite logs estruturados, mas o repositório não configura coleta
+  centralizada de métricas, tracing, dashboards ou alertas.
 
 ## 5. Plano simples de observabilidade
 
@@ -117,14 +116,15 @@ Evitar labels de alta cardinalidade, como IDs de usuário, proposta ou veículo.
 
 ### Logs
 
-- Centralizar stdout/stderr dos containers e manter a rotação já configurada.
-- Preservar `request_id` para relacionar log do Nginx e da API; atualmente o
-  Nginx o encaminha como `X-Request-ID`, mas a aplicação deve ser verificada para
-  garantir que o propaga nos logs.
-- Registrar timestamp UTC, serviço, ambiente, nível, rota normalizada,
-  status/duração e identificador de correlação.
-- Não registrar senhas, tokens, cabeçalhos de autorização, corpo de requisição
-  nem dados pessoais. Restringir acesso e definir prazo de retenção.
+- A API e o Nginx enviam logs para stdout/stderr; o Compose configura rotação
+  dos logs dos containers.
+- O Nginx encaminha `X-Request-ID`; o middleware da API preserva IDs válidos,
+  gera um identificador quando ausente e o inclui nos logs e respostas de erro.
+- Os logs HTTP incluem timestamp UTC, método, rota normalizada, status,
+  duração e identificador de correlação. O log de acesso não inclui corpo,
+  query string ou valores dos parâmetros de rota.
+- O middleware de erros registra o detalhe interno no servidor e retorna uma
+  mensagem genérica para falhas 5xx.
 
 ### Alertas iniciais
 
@@ -196,3 +196,4 @@ reduções já obtidas nem garantias de ganho após mudanças.
 |---|---|---|
 | 1.0 | 2026-11-03 | Registro inicial baseado nas configurações presentes no repositório; metas propostas, ainda não medidas. |
 | 1.1 | 2026-11-03 | Incluídas capturas locais do Chrome para `/explorar`, interpretação dos Core Web Vitals e ações recomendadas; estimativas mantidas separadas de resultados. |
+| 1.2 | 2026-11-17 | Registrados o circuit breaker do publisher da Outbox, a validação por DTOs, o tratamento centralizado de erros e os logs estruturados correlacionados. |

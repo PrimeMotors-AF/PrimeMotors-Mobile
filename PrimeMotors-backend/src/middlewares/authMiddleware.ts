@@ -1,17 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
+import { ApiError } from "../errors/ApiError";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   
   if (!authHeader) {
-    return res.status(401).json({ message: "Token Não Fornecido" });
+    return next(new ApiError(401, "UNAUTHORIZED", "Token não fornecido."));
   }
   const [scheme, token] = authHeader.split(" ");
 
   if (scheme !== "Bearer" || !token) {
-    return res.status(401).json({ message: "Token Malformatado" });
+    return next(new ApiError(401, "UNAUTHORIZED", "Token malformado."));
   }
 
   try {
@@ -24,8 +25,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     req.user = payload;
     return next();
   } catch {
-    console.warn("JWT verification failed.");
-    return res.status(401).json({ message: "Token Inválido ou Expirado!" });
+    return next(new ApiError(401, "UNAUTHORIZED", "Token inválido ou expirado."));
   }
   
 };

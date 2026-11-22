@@ -1,26 +1,27 @@
 import "dotenv/config";
 import { createClient } from "redis";
+import { logger } from "../utils/logger";
 
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
 export const redisClient = createClient({ url: redisUrl });
 
 redisClient.on("connect", () => {
-  console.info("Redis connection established.");
+  logger.info("dependency.redis.connected");
 });
 
 redisClient.on("ready", () => {
-  console.info("Redis client is ready.");
+  logger.info("dependency.redis.ready");
 });
 
 redisClient.on("reconnecting", () => {
-  console.warn("Redis connection lost; reconnecting.");
+  logger.warn("dependency.redis.reconnecting");
 });
 
 redisClient.on("end", () => {
-  console.warn("Redis connection closed.");
+  logger.warn("dependency.redis.connection_closed");
 });
 
 redisClient.on("error", (error) => {
-  console.error("Redis client error:", error);
+  logger.error("dependency.redis.error", { error });
 });

@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { deleteUserController, getUserController, updateUserController, updateAvatar } from '../controllers/userController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar } from '../middlewares/uploadAvatar';
+import { ApiError } from '../errors/ApiError';
 
 const router = Router();
 
@@ -19,18 +19,30 @@ router.patch(
       { name: 'file', maxCount: 1 },
     ]);
 
-    upload(req, res, (err: any) => {
-      if (err) {
-        // Intercepta o tamanho do arquivo
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          res.status(400).json({
-            message: 'O arquivo é muito grande. O tamanho máximo permitido é 5MB.',
-          });
+    upload(req, res, (error: unknown) => {
+      if (error) {
+        const code =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error
+            ? error.code
+            : undefined;
+        const message =
+          error instanceof Error ? error.message : 'Erro no envio do arquivo.';
+        if (code === 'LIMIT_FILE_SIZE') {
+          next(new ApiError(
+            400,
+            'UPLOAD_TOO_LARGE',
+            'O arquivo é muito grande. O tamanho máximo permitido é 5MB.',
+          ));
           return;
         }
 
-        // Intercepta tipo não permitido ou outros erros do Multer
-        res.status(400).json({ message: err.message || 'Erro no envio do arquivo.' });
+        next(new ApiError(
+          400,
+          'INVALID_UPLOAD',
+          message,
+        ));
         return;
       }
 

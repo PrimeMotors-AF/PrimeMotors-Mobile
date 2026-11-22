@@ -1,75 +1,92 @@
-# Decisões arquiteturais — ADRs
+# Decisões arquiteturais
 
-Os ADRs abaixo são registros iniciais inferidos do código e das configurações
-atuais. A equipe deve aprová-los e mantê-los conforme a arquitetura evoluir.
+Este registro descreve as decisões refletidas no código e na configuração
+atual do sistema.
 
-## ADR-001 — Monólito modular
+## ADR-001 — Monólito modular para a API principal
 
-- **Decisão:** manter inicialmente um monólito modular Express, com módulos por
-  domínio.
-- **Motivo:** rotas, controllers e serviços estão no mesmo backend e
-  compartilham dados/transações. Evita o custo operacional de separar serviços
-  sem necessidade comprovada.
-- **Consequências:** uma separação futura exige limites de módulo e interfaces
-  explícitas.
+- **Estado:** implementado.
+- **Decisão:** a API principal usa Node.js, Express e Prisma, organizada por
+  rotas, controllers, serviços e módulos de domínio no mesmo processo.
+- **Evidência:** os módulos de autenticação, usuários, catálogo, favoritos,
+  propostas e test drives compartilham a aplicação e o banco transacional.
+- **Consequência:** esses módulos são implantados juntos; o serviço de e-mail
+  permanece em processo e container separados.
 
-## ADR-002 — MySQL e Prisma
+## ADR-002 — MySQL e Prisma para dados transacionais
 
-- **Decisão:** usar MySQL como fonte transacional e Prisma como camada de
-  persistência.
-- **Motivo:** o schema Prisma define relações, unicidade e enums; as migrations
-  existentes e a configuração do Compose usam MySQL. O adaptador aceita URLs
-  `mysql://` e `mariadb://`.
-- **Consequências:** migrations e backups precisam ser geridos para MySQL
-  compatível.
+- **Estado:** implementado.
+- **Decisão:** MySQL é a persistência transacional da API principal, acessada
+  pelo Prisma. O serviço de e-mail mantém um banco MySQL próprio, acessado por
+  SQLAlchemy e gerenciado com Alembic.
+- **Evidência:** schema Prisma, migrations, constraints relacionais e serviços
+  MySQL declarados no Compose.
+- **Consequência:** o MySQL mantém a fonte de verdade de usuários, veículos,
+  propostas, favoritos e agendamentos; Redis não substitui esses dados.
 
-## ADR-003 — Redis complementar
+## ADR-003 — Redis para cache, limitação de requisições e eventos
 
-- **Decisão:** usar Redis para cache de leitura, rate limiting e integração
-  assíncrona de propostas.
-- **Motivo:** esses mecanismos estão implementados no backend.
-- **Consequências:** Redis não substitui MySQL como fonte de verdade. A API
-  falha fechada no rate limiter quando Redis está indisponível e falha aberta
-  no cache de leitura.
+- **Estado:** implementado.
+- **Decisão:** Redis 7 fornece cache de leitura de veículos, rate limiting,
+  Redis Pub/Sub para notificação complementar e Redis Streams para o fluxo
+  durável de notificações de propostas.
+- **Evidência:** cache-aside com TTL, scripts de rate limit, publisher da
+  Outbox, subscriber Pub/Sub e consumer group do serviço de e-mail.
+- **Consequência:** falhas de leitura do cache permitem fallback ao MySQL; o
+  rate limiter responde `503` quando Redis não está disponível. O e-mail é
+  processado a partir do Stream, não do subscriber Pub/Sub de observação.
 
-## ADR-004 — Outbox e Redis Stream
+## ADR-004 — Outbox transacional e Redis Stream
 
-- **Decisão:** registrar a proposta e o evento Outbox na mesma transação e
-  publicar o evento depois no Redis Stream.
-- **Motivo:** evita confirmar proposta sem registrar a intenção de notificar.
-- **Consequências:** o dispatcher usa lease e retry exponencial. O consumer lê
-  eventos com IDs, busca o payload por rota interna autenticada e processa o
-  email com consumer group, recuperação de pendências e `XACK` após sucesso.
-  Consulte [email-service.md](../Services/email-service/email-service.md).
+- **Estado:** implementado.
+- **Decisão:** a proposta e sua intenção de notificação são gravadas na mesma
+  transação MySQL. Um dispatcher publica os eventos pendentes no Stream
+  `email.confirmations`.
+- **Evidência:** cada linha da Outbox possui tentativas, próxima data de
+  execução e lease. Falhas de publicação recebem retry exponencial, limitado a
+  15 minutos. O consumer usa grupo Redis, recupera mensagens pendentes e envia
+  `XACK` após o processamento bem-sucedido.
+- **Consequência:** a entrega é at-least-once. O evento contém identificadores
+  e metadados; o consumer obtém os dados da proposta por endpoint interno
+  autenticado.
 
-## ADR-005 — Serviço de notificações em Python
+## ADR-005 — Serviço de e-mail em FastAPI
 
-- **Estado:** decisão atual observada; justificativa a validar pela equipe.
-- **Contexto:** o envio de emails de propostas é assíncrono, iniciado por
-  eventos no Redis Stream. O serviço busca dados da proposta no backend, valida
-  o payload, controla retries/idempotência e persiste o resultado dos envios.
-- **Decisão:** manter o serviço separado em Python com FastAPI, Pydantic,
-  consumer Redis assíncrono, SQLAlchemy/Alembic e envio SMTP.
-- **Alternativas consideradas:** incorporar o fluxo ao backend TypeScript/
-  Express ou implementá-lo como outro serviço Node.js. Não há benchmarks no
-  repositório que demonstrem vantagem de desempenho de Python; a decisão se
-  baseia na separação funcional e nas bibliotecas já usadas.
-- **Consequências:** o serviço pode evoluir e ser implantado independentemente,
-  mas exige manutenção de dois runtimes, dependências, pipelines e práticas de
-  observabilidade. A comunicação entre serviços precisa permanecer explícita e
-  autenticada. O uso de Python não implica migração do backend principal.
+- **Estado:** implementado.
+- **Decisão:** notificações de propostas são processadas por uma aplicação
+  Python/FastAPI separada, com consumer Redis Stream, persistência MySQL,
+  SQLAlchemy/Alembic e envio SMTP.
+- **Evidência:** no Compose principal, a API e o consumer executam no container
+  `email-service`; o MySQL do serviço é um container separado. O consumer busca
+  detalhes da proposta no backend por HTTP autenticado e usa timeout de 10
+  segundos. A conexão SMTP usa timeout de 15 segundos.
+- **Consequência:** o consumer controla retry e recuperação de eventos; a
+  idempotência registra separadamente a entrega ao cliente e à equipe.
 
-## Decisão do banco de dados
+## ADR-006 — Circuit breaker no publisher da Outbox
 
-O projeto usa MySQL 8 no Compose e Prisma para acesso relacional. O schema tem
-relações entre usuários, carros, categorias, marcas, favoritos, propostas e
-test drives, além de constraints de unicidade e migrations versionadas. Essa
-escolha permite transações e integridade referencial, inclusive para gravar uma
-proposta e sua linha Outbox atomicamente. Redis é complementar: cache, rate
-limiting e transporte de eventos, não a persistência principal.
+- **Estado:** implementado.
+- **Decisão:** o `XADD` do Redis Stream executa por um circuit breaker
+  independente em cada processo do backend.
+- **Comportamento:** cinco falhas consecutivas abrem o circuito por 30
+  segundos. Em seguida, uma única operação de sondagem é permitida em
+  half-open. Sucesso fecha o circuito; falha inicia novo período aberto.
+- **Consequência:** enquanto o circuito está aberto, o publisher falha
+  rapidamente e a Outbox agenda novo retry. A janela não descarta o evento,
+  que permanece persistido no MySQL até a publicação ser confirmada. O
+  `publish` de Redis Pub/Sub é best-effort e não participa desse circuito.
 
-**Consequências e decisões pendentes:** definir política de backup e teste de
-restauração; retenção e monitoramento do Outbox/Stream; aplicar migrations em
-deploy com estratégia compatível; medir volume, concorrência e latência antes
-de alterar o banco. A configuração presente não demonstra replicação, failover
-ou recuperação de desastre.
+## ADR-007 — DTOs, erros HTTP e logs correlacionados
+
+- **Estado:** implementado.
+- **Decisão:** os payloads de autenticação, perfil, proposta, favorito e test
+  drive são convertidos e validados na borda da API por DTOs. Erros de rota
+  passam por um middleware comum.
+- **Contrato de erro:** respostas incluem `error`, `message`, `code` e
+  `requestId`; `error` e `message` preservam compatibilidade com os clientes
+  existentes. Detalhes inesperados são registrados no servidor e retornam ao
+  cliente como erro interno genérico.
+- **Logs:** requisições e falhas são emitidas em JSON com timestamp,
+  identificador de correlação, método, rota normalizada e status. Corpo,
+  query string e valores de identificadores da rota não são incluídos no log
+  de acesso.

@@ -1,6 +1,6 @@
 # Domínio e DDD
 
-## Context map inicial
+## Mapeamento de contexto
 
 ```mermaid
 flowchart LR
@@ -34,9 +34,9 @@ autenticado do backend e processa a notificação.
 | Identidade e usuários | Supporting | Cadastro, login, perfil, avatar e autorização por papel. |
 | Agendamento de test drive | Supporting | Agendar, consultar, alterar e excluir horários de visita. |
 | Favoritos | Supporting | Manter a lista de carros salvos e suas anotações. |
-| Notificações | Generic/Supporting (a confirmar) | Consumer do Redis Stream processa eventos de propostas; API de email envia confirmação ao usuário e aviso interno. |
+| Notificações | Supporting | Consumer do Redis Stream processa eventos de propostas; API de email envia confirmação ao usuário e aviso interno. |
 
-## Contexto de Propostas — modelo inicial
+## Contexto de Propostas
 
 O nome físico atual do modelo é `Garage`; no domínio ele representa uma
 **Proposta**. O modelo observado é separado abaixo dos Value Objects e

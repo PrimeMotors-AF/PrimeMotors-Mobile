@@ -97,7 +97,10 @@ export default function ProdutoCard() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Card Superior Principal */}
         <View style={styles.topCard}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.replace("/(app)/explorar")}
+          >
             <Feather name="arrow-left" size={24} color="#111827" />
           </TouchableOpacity>
 

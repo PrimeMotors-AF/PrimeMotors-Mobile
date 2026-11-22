@@ -4,6 +4,7 @@ import {
   getCachedCarResult,
   setCachedCarResult,
 } from "./carCache";
+import { logger } from "../utils/logger";
 
 type CarWithRelations = Prisma.CarGetPayload<{
   include: {
@@ -67,7 +68,7 @@ export async function getCars(page = 1, limit = 100) {
     return cachedCars;
   }
 
-  console.info("Fetching car list from MySQL.", { page: validPage });
+  logger.info("car_catalog.mysql_list_query", { page: validPage });
   const cars = await prisma.car.findMany({
     skip: (validPage - 1) * validLimit,
     take: validLimit,
@@ -90,7 +91,7 @@ export async function getCarById(id: string): Promise<DetailedCar | null> {
     return cachedCar;
   }
 
-  console.info("Fetching car details from MySQL.");
+  logger.info("car_catalog.mysql_detail_query");
   const car = await prisma.car.findUnique({
     where: { id },
     include: {
