@@ -85,7 +85,7 @@ export function Navbar() {
       <Tabs.Screen
         name="AdminPropostas/index"
         options={{
-          href: null,
+          tabBarItemStyle: { display: "none" },
         }}
       />
     </Tabs>

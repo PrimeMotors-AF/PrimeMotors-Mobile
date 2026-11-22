@@ -2,6 +2,7 @@ import { Prisma, FuelType } from "@prisma/client";
 import prisma from "../src/config/database";
 import { redisClient } from "../src/config/redis";
 import { invalidateCarCache } from "../src/services/carCache";
+import bcrypt from "bcrypt";
 
 async function main() {
   await prisma.testDrive.deleteMany();
@@ -482,12 +483,43 @@ async function main() {
     });
   }
 }
+async function ensureAdmin() {
+  const email = process.env.ADMIN_EMAIL ?? "admin@primemotors.local";
+  const isProd = process.env.NODE_ENV === "production";
+  const password =
+    process.env.ADMIN_PASSWORD ?? (isProd ? undefined : "PrimeAdmin@2026");
+
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD deve ser definido em produção.");
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+
+  const admin = await prisma.user.upsert({
+    where: { email },
+    // Mantém a senha atual se o admin já existe
+    update: { role: "admin", active: true },
+    create: {
+      name: process.env.ADMIN_NAME ?? "Administrador Prime Motors",
+      email,
+      cpf: process.env.ADMIN_CPF ?? "52998224725",
+      cep: process.env.ADMIN_CEP ?? "01001000",
+      number: process.env.ADMIN_PHONE ?? "11999999999",
+      password: hash,
+      active: true,
+      role: "admin",
+    },
+  });
+
+  console.log(`👤 Admin garantido: ${admin.email} (${admin.id})`);
+}
 
 async function runSeed() {
   let catalogMutationStarted = false;
 
   try {
     await redisClient.connect();
+    await ensureAdmin();    
     catalogMutationStarted = true;
     await main();
     console.log("🌱 Seed finalizado");
