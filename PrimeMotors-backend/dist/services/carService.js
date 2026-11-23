@@ -33,6 +33,7 @@ async function getCars(page = 1, limit = 100) {
     if (cachedCars) {
         return cachedCars;
     }
+    console.info("Fetching car list from MySQL.", { page: validPage });
     const cars = await database_1.default.car.findMany({
         skip: (validPage - 1) * validLimit,
         take: validLimit,
@@ -53,6 +54,7 @@ async function getCarById(id) {
     if (cachedCar) {
         return cachedCar;
     }
+    console.info("Fetching car details from MySQL.");
     const car = await database_1.default.car.findUnique({
         where: { id },
         include: {

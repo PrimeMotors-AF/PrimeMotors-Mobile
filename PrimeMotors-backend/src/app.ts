@@ -13,18 +13,22 @@ import favoriteRoutes from "./routes/favoriteRoutes";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import testDriveRoutes from "./routes/testDriveRoutes";
 
-import {
-  getUserController,
-  updateUserController,
-} from "./controllers/userController";
 import prisma from "./config/database";
 import { redisClient } from "./config/redis";
 import userGarageRoutes from "./routes/userGarageRoutes";
 import { apiRateLimit } from "./middlewares/rateLimit";
 import internalRoutes from "./routes/internalRoutes";
+import { requestLogger } from "./middlewares/requestLogger";
+import { ApiError } from "./errors/ApiError";
+import {
+  errorHandler,
+  notFoundHandler,
+} from "./middlewares/errorHandler";
+import { logger } from "./utils/logger";
 
 const app = express();
 app.set("trust proxy", "uniquelocal");
+app.use(requestLogger);
 app.use(express.json());
 
 app.use(
@@ -34,7 +38,7 @@ app.use(
         callback(null, true);
         return;
       }
-      callback(new Error("Origem não permitida pelo CORS"));
+      callback(new ApiError(403, "ORIGIN_NOT_ALLOWED", "Origem não permitida."));
     },
     credentials: true,
   }),
@@ -55,10 +59,11 @@ app.get("/health/ready", async (_req, res) => {
   checks.forEach((result, index) => {
     if (result.status === "rejected") {
       failedDependencies.push(dependencies[index]);
-      console.error(
-        `Readiness check failed for ${dependencies[index]}:`,
-        result.reason,
-      );
+      logger.error("health.readiness_dependency_failed", {
+        dependency: dependencies[index],
+        requestId: _req.get("x-request-id"),
+        error: result.reason,
+      });
     }
   });
 
@@ -77,5 +82,8 @@ app.use("/internal", internalRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/cars", carsRoutes);
 app.use("/test-drives", testDriveRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

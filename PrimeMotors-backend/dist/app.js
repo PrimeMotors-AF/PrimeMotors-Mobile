@@ -20,8 +20,10 @@ const redis_1 = require("./config/redis");
 const userGarageRoutes_1 = __importDefault(require("./routes/userGarageRoutes"));
 const rateLimit_1 = require("./middlewares/rateLimit");
 const internalRoutes_1 = __importDefault(require("./routes/internalRoutes"));
+const requestLogger_1 = require("./middlewares/requestLogger");
 const app = (0, express_1.default)();
 app.set("trust proxy", "uniquelocal");
+app.use(requestLogger_1.requestLogger);
 app.use(express_1.default.json());
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
@@ -37,14 +39,22 @@ app.get("/", (req, res) => {
     res.json({ message: "Backend rodando com sucesso!" });
 });
 app.get("/health/ready", async (_req, res) => {
-    try {
-        await Promise.all([database_1.default.$queryRaw `SELECT 1`, redis_1.redisClient.ping()]);
-        return res.status(200).json({ status: "ready" });
-    }
-    catch (error) {
-        console.error("Backend database/Redis readiness check failed:", error);
+    const checks = await Promise.allSettled([
+        database_1.default.$queryRaw `SELECT 1`,
+        redis_1.redisClient.ping(),
+    ]);
+    const dependencies = ["database", "redis"];
+    const failedDependencies = [];
+    checks.forEach((result, index) => {
+        if (result.status === "rejected") {
+            failedDependencies.push(dependencies[index]);
+            console.error(`Readiness check failed for ${dependencies[index]}:`, result.reason);
+        }
+    });
+    if (failedDependencies.length > 0) {
         return res.status(503).json({ status: "unavailable" });
     }
+    return res.status(200).json({ status: "ready" });
 });
 app.use(rateLimit_1.apiRateLimit);
 app.use("/auth", authRoutes_1.default);

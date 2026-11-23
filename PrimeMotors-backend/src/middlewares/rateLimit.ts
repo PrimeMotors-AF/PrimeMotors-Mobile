@@ -1,5 +1,7 @@
 import { RequestHandler } from "express";
 import { redisClient } from "../config/redis";
+import { ApiError } from "../errors/ApiError";
+import { logger } from "../utils/logger";
 
 const incrementRateLimitScript = `
 local count = redis.call("INCR", KEYS[1])
@@ -44,14 +46,19 @@ function createRedisRateLimit(options: {
 
       [count, ttlMs] = result;
     } catch (error) {
-      console.error("Redis rate limiter failed", {
+      logger.error("ratelimit.redis_failed", {
         policy: options.keyPrefix,
         method: req.method,
-        path: req.path,
+        requestId: res.getHeader("X-Request-ID"),
         error,
       });
-      res.status(503).json({ error: "Serviço temporariamente indisponível." });
-      return;
+      return next(
+        new ApiError(
+          503,
+          "DEPENDENCY_UNAVAILABLE",
+          "Serviço temporariamente indisponível.",
+        ),
+      );
     }
 
     const retryAfterSeconds = Math.max(1, Math.ceil(ttlMs / 1_000));
@@ -64,12 +71,17 @@ function createRedisRateLimit(options: {
     );
 
     if (count > options.max) {
-      res.setHeader("Retry-After", retryAfterSeconds);
-      res.status(429).json({
-        error: "Limite de requisições excedido. Tente novamente mais tarde.",
-        retryAfterSeconds,
-      });
-      return;
+      return next(
+        new ApiError(
+          429,
+          "RATE_LIMIT_EXCEEDED",
+          "Limite de requisições excedido. Tente novamente mais tarde.",
+          {
+            headers: { "Retry-After": retryAfterSeconds },
+            details: { retryAfterSeconds },
+          },
+        ),
+      );
     }
 
     next();

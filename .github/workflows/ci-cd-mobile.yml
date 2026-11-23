@@ -2,12 +2,12 @@ name: Prime Motors Mobile CI
 
 on:
   pull_request:
-    branches: [ main, develop, 'feat/**', 'bugfix/**' ]
+    branches: [ main, develop, 'feat/**', 'bugfix/**',  'ci/**'  ]
     paths:
       - 'Mobile/**'
       - '.github/workflows/ci-cd-mobile.yml'
   push:
-    branches: [ main, develop, 'feat/**', 'bugfix/**' ]
+    branches: [ main, develop, 'feat/**', 'bugfix/**',  'ci/**'  ]
     paths:
       - 'Mobile/**'
       - '.github/workflows/ci-cd-mobile.yml'

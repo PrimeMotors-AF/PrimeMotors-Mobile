@@ -65,7 +65,7 @@ export async function findFavorite(userId: string, carId: string) {
 export async function updateFavoriteMessage(
   favoriteId: string,
   userId: string,
-  message: string,
+  message: string | null | undefined,
 ) {
   const favorite = await prisma.favorite.findFirst({
     where: { id: favoriteId, userId },

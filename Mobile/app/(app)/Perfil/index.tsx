@@ -263,7 +263,7 @@ export default function Perfil() {
           <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#C59958]">MEUS TEST DRIVES</Text>
         </Pressable>
         {user.role === "admin" ? (
-          <Pressable onPress={() => router.push("/AdminPropostas/" as never)} className="mt-4 border border-[#C59958] bg-[#C59958] p-4">
+          <Pressable onPress={() => router.push("/(app)/AdminPropostas" )} className="mt-4 border border-[#C59958] bg-[#C59958] p-4">
             <Text className="text-center text-[13px] font-bold tracking-[1px] text-[#171615]">PROPOSTAS RECEBIDAS</Text>
           </Pressable>
         ) : null}

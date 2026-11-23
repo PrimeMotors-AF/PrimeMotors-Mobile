@@ -1,6 +1,7 @@
 import prisma from "../config/database";
 import bcrypt from "bcrypt";
-import type { CreateUserInput, UpdateUserInput } from "../types/user";
+import type { CreateUserDto, UpdateUserDto } from "../dtos/user.dto";
+import { ApiError } from "../errors/ApiError";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^.{6,}$/;
@@ -27,7 +28,7 @@ const isValidCpf = (cpf: string) => {
   );
 };
 
-const validateNewUser = async (data: CreateUserInput) => {
+const validateNewUser = async (data: CreateUserDto) => {
   if (
     !data.name ||
     !data.email ||
@@ -36,50 +37,52 @@ const validateNewUser = async (data: CreateUserInput) => {
     !data.cep ||
     !data.number
   ) {
-    throw new Error(
+    throw new ApiError(
+      400,
+      "INVALID_USER",
       "Nome, email, senha, CPF, CEP e telefone são obrigatórios.",
     );
   }
 
   if (typeof data.name !== "string" || data.name.trim().length < 3) {
-    throw new Error("Nome deve ter pelo menos 3 caracteres.");
+    throw new ApiError(400, "INVALID_USER", "Nome deve ter pelo menos 3 caracteres.");
   }
 
   if (typeof data.email !== "string" || !emailRegex.test(data.email)) {
-    throw new Error("Email inválido.");
+    throw new ApiError(400, "INVALID_USER", "Email inválido.");
   }
 
   if (typeof data.password !== "string" || !passwordRegex.test(data.password)) {
-    throw new Error("Senha inválida. Deve ter ao menos 6 caracteres.");
+    throw new ApiError(400, "INVALID_USER", "Senha inválida. Deve ter ao menos 6 caracteres.");
   }
 
   const cpfDigits = cleanCpf(data.cpf);
   if (!isValidCpf(cpfDigits)) {
-    throw new Error("CPF inválido.");
+    throw new ApiError(400, "INVALID_USER", "CPF inválido.");
   }
 
   const cepDigits = cleanDigits(data.cep);
   if (cepDigits.length !== 8) {
-    throw new Error("CEP inválido ou incompleto.");
+    throw new ApiError(400, "INVALID_USER", "CEP inválido ou incompleto.");
   }
 
   const numberDigits = cleanDigits(data.number);
   if (numberDigits.length < 10) {
-    throw new Error("Telefone inválido ou incompleto.");
+    throw new ApiError(400, "INVALID_USER", "Telefone inválido ou incompleto.");
   }
 
   const existingEmail = await prisma.user.findUnique({
     where: { email: data.email },
   });
   if (existingEmail) {
-    throw new Error("E-mail já cadastrado!");
+    throw new ApiError(409, "CONFLICT", "E-mail já cadastrado!");
   }
 
   const existingCpf = await prisma.user.findFirst({
     where: { cpf: cpfDigits },
   });
   if (existingCpf) {
-    throw new Error("CPF já cadastrado!");
+    throw new ApiError(409, "CONFLICT", "CPF já cadastrado!");
   }
 
   return {
@@ -89,46 +92,48 @@ const validateNewUser = async (data: CreateUserInput) => {
   };
 };
 
-const validateUpdatedUser = async (id: string, data: UpdateUserInput) => {
+const validateUpdatedUser = async (id: string, data: UpdateUserDto) => {
   if (!data.name || !data.cpf || !data.cep || !data.number) {
-    throw new Error(
+    throw new ApiError(
+      400,
+      "INVALID_USER",
       "Nome, CPF, CEP e número são obrigatórios para atualização.",
     );
   }
 
   const cpfDigits = cleanCpf(data.cpf);
   if (!isValidCpf(cpfDigits)) {
-    throw new Error("CPF inválido.");
+    throw new ApiError(400, "INVALID_USER", "CPF inválido.");
   }
 
   const cepDigits = cleanDigits(data.cep);
   if (cepDigits.length !== 8) {
-    throw new Error("CEP inválido ou incompleto.");
+    throw new ApiError(400, "INVALID_USER", "CEP inválido ou incompleto.");
   }
 
   const numberDigits = cleanDigits(data.number);
   if (numberDigits.length < 10) {
-    throw new Error("Telefone inválido ou incompleto.");
+    throw new ApiError(400, "INVALID_USER", "Telefone inválido ou incompleto.");
   }
 
   if (
     data.password &&
     (typeof data.password !== "string" || !passwordRegex.test(data.password))
   ) {
-    throw new Error("Senha inválida. Deve ter ao menos 6 caracteres.");
+    throw new ApiError(400, "INVALID_USER", "Senha inválida. Deve ter ao menos 6 caracteres.");
   }
 
   const existingCpf = await prisma.user.findFirst({
     where: { cpf: cpfDigits, id: { not: id } },
   });
   if (existingCpf) {
-    throw new Error("CPF já cadastrado!");
+    throw new ApiError(409, "CONFLICT", "CPF já cadastrado!");
   }
 
   return { cpf: cpfDigits, cep: cepDigits, number: numberDigits };
 };
 
-export const createUserService = async (data: CreateUserInput) => {
+export const createUserService = async (data: CreateUserDto) => {
   const normalized = await validateNewUser(data);
 
   const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -171,14 +176,14 @@ export const getUserByIdService = async (id: string) => {
   });
 };
 
-export const updateUserService = async (id: string, data: UpdateUserInput) => {
+export const updateUserService = async (id: string, data: UpdateUserDto) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
-    throw new Error("Usuário não encontrado.");
+    throw new ApiError(404, "NOT_FOUND", "Usuário não encontrado.");
   }
 
   if (data.email !== undefined) {
-    throw new Error("Não é permitido alterar o email.");
+    throw new ApiError(400, "INVALID_USER", "Não é permitido alterar o email.");
   }
 
   const normalized = await validateUpdatedUser(id, data);
@@ -220,7 +225,7 @@ export const updateUserService = async (id: string, data: UpdateUserInput) => {
 export const deactivateUserService = async (id: string) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
-    throw new Error("Usuário não encontrado.");
+    throw new ApiError(404, "NOT_FOUND", "Usuário não encontrado.");
   }
 
   return await prisma.user.update({

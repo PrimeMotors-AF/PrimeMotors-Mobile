@@ -7,11 +7,15 @@ jest.mock("../../src/config/redis", () => ({
 }));
 
 import { redisClient } from "../../src/config/redis";
-import { publishProposalCreated } from "../../src/services/proposalEvents";
+import {
+  proposalStreamCircuitBreaker,
+  publishProposalCreated,
+} from "../../src/services/proposalEvents";
 
 describe("proposal event publishing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    proposalStreamCircuitBreaker.reset();
   });
 
   it("publishes only identifiers and event metadata with bounded retention", async () => {
@@ -57,5 +61,43 @@ describe("proposal event publishing", () => {
       { strategyModifier: "~" },
     );
     expect(publish).toHaveBeenCalledWith("proposals.created", serializedEvent);
+  });
+
+  it("does not republish a persisted event when retention cleanup fails", async () => {
+    jest.mocked(redisClient.xTrim).mockRejectedValueOnce(
+      new Error("Redis trim unavailable"),
+    );
+
+    await expect(
+      publishProposalCreated({
+        eventId: "event-2",
+        proposalId: "proposal-2",
+        occurredAt: "2026-10-27T12:00:00.000Z",
+      }),
+    ).resolves.toBe("event-2");
+
+    expect(redisClient.xAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the Redis stream publisher after repeated publish failures", async () => {
+    jest.mocked(redisClient.xAdd).mockRejectedValue(
+      new Error("Redis unavailable"),
+    );
+    const event = {
+      eventId: "event-3",
+      proposalId: "proposal-3",
+      occurredAt: "2026-10-27T12:00:00.000Z",
+    };
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(publishProposalCreated(event)).rejects.toThrow(
+        "Redis unavailable",
+      );
+    }
+
+    await expect(publishProposalCreated(event)).rejects.toMatchObject({
+      code: "CIRCUIT_BREAKER_OPEN",
+    });
+    expect(redisClient.xAdd).toHaveBeenCalledTimes(5);
   });
 });

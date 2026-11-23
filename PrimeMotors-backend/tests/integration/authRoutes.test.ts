@@ -42,6 +42,23 @@ describe('Auth Routes Integration', () => {
       .post('/auth/login')
       .send({ email: 'wrong@test.com', password: '123' });
     expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      error: "E-mail ou senha incorretos.",
+      message: "E-mail ou senha incorretos.",
+      code: "INVALID_CREDENTIALS",
+    });
+  });
+
+  it('POST /auth/login deve retornar erro padronizado para corpo inválido', async () => {
+    const response = await request(app).post('/auth/login').send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: "Email e senha são obrigatórios.",
+      message: "Email e senha são obrigatórios.",
+      code: "INVALID_REQUEST",
+    });
+    expect(response.headers["x-request-id"]).toBe(response.body.requestId);
   });
 
   it('POST /auth/users deve criar usuário', async () => {
@@ -50,7 +67,14 @@ describe('Auth Routes Integration', () => {
 
     const response = await request(app)
       .post('/auth/users')
-      .send({ name: 'Novo', email: 'new@test.com', password: '123' });
+      .send({
+        name: 'Novo',
+        email: 'new@test.com',
+        password: '123',
+        cpf: '12345678909',
+        cep: '12345678',
+        number: '11999999999',
+      });
     expect(response.status).toBe(201);
     expect(response.body).toEqual({ user: mockUser });
   });
