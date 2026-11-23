@@ -5,6 +5,15 @@ info:
   description: >-
     Referência das principais rotas da API Express, com parâmetros, schemas de
     entrada e respostas descritos neste documento.
+
+
+    Todas as rotas, exceto `/` e `/health/ready`, passam por um limitador de
+    requisições baseado em Redis. Quando o limite é excedido a API responde
+    `429`; quando o Redis está indisponível o limitador responde `503`.
+
+
+    Erros seguem o schema `Error` (`error`, `message`, `code`, `requestId`).
+    Rotas inexistentes retornam `404` com `code: NOT_FOUND`.
 servers:
   - url: http://{host}:{port}
     description: Desenvolvimento local
@@ -28,6 +37,8 @@ tags:
     description: Criação e gerenciamento de propostas de veículos.
   - name: Test drives
     description: Agendamento e gerenciamento de test drives.
+  - name: Internal
+    description: Rotas de uso exclusivo entre serviços (não expostas a clientes).
 paths:
   /:
     get:
@@ -71,8 +82,9 @@ paths:
                 number: { type: string, description: Telefone }
       responses:
         "201": { description: Usuário criado }
-        "400": { description: Dados inválidos ou cadastro duplicado }
-        "429": { description: Limite de requisições excedido }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
   /auth/login:
     post:
       operationId: loginUser
@@ -91,9 +103,10 @@ paths:
                 password: { type: string }
       responses:
         "200": { description: Login realizado; retorna token e usuário }
-        "400": { description: Campos obrigatórios ausentes }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { description: Credenciais inválidas ou usuário desativado }
-        "429": { description: Limite de requisições excedido }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
   /cars:
     get:
       operationId: listCars
@@ -109,6 +122,7 @@ paths:
           schema: { type: integer, minimum: 1, default: 100 }
       responses:
         "200": { description: Lista de veículos }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { description: Erro ao consultar veículos }
   /cars/{id}:
     get:
@@ -121,6 +135,7 @@ paths:
       responses:
         "200": { description: Detalhes do veículo }
         "404": { description: Veículo não encontrado }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { description: Erro ao consultar veículo }
   /users/{id}:
     parameters:
@@ -128,11 +143,16 @@ paths:
     get:
       operationId: getUserById
       tags: [Users]
-      summary: Consulta perfil público do usuário
-      security: []
+      summary: Consulta perfil do usuário
+      description: >-
+        Todas as rotas de `/users` exigem token Bearer, pois o middleware de
+        autenticação é aplicado ao prefixo.
+      security:
+        - bearerAuth: []
       responses:
         "200": { description: Perfil sem senha }
         "400": { description: Identificador inválido }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Usuário não encontrado }
     patch:
       operationId: updateOwnUser
@@ -155,7 +175,8 @@ paths:
                 password: { type: string, minLength: 6 }
       responses:
         "200": { description: Perfil atualizado }
-        "400": { description: Dados inválidos }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
     delete:
       operationId: deactivateOwnUser
@@ -165,6 +186,7 @@ paths:
         - bearerAuth: []
       responses:
         "200": { description: Usuário desativado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
   /users/{id}/avatar:
     patch:
@@ -192,6 +214,7 @@ paths:
       responses:
         "200": { description: Avatar atualizado ou removido }
         "400": { description: "Arquivo ausente, inválido ou acima de 5 MB" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
   /favorites/{id}:
     get:
@@ -206,13 +229,13 @@ paths:
         - $ref: "#/components/parameters/limit10"
       responses:
         "200": { description: Favoritos paginados }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
     delete:
       operationId: removeFavoriteByCarId
       tags: [Favorites]
       summary: Remove favorito pelo identificador do veículo
-      description: Neste método, id corresponde ao carId da rota Express.
+      description: Neste método, id corresponde ao carId da rota Express (`/:carId`).
       security:
         - bearerAuth: []
       parameters:
@@ -222,7 +245,7 @@ paths:
           schema: { type: string, description: Identificador do veículo }
       responses:
         "200": { description: Favorito removido }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Favorito não encontrado }
   /favorites:
     post:
@@ -243,7 +266,8 @@ paths:
                 message: { type: string }
       responses:
         "201": { description: Favorito criado }
-        "401": { description: Não autenticado }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { description: Favorito já existe }
   /favorites/toggle:
     post:
@@ -267,7 +291,7 @@ paths:
         "200": { description: Favorito removido }
         "201": { description: Favorito adicionado }
         "400": { description: carId ausente }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: userId não corresponde ao token }
   /favorites/{id}/message:
     patch:
@@ -288,7 +312,7 @@ paths:
                 message: { type: [string, "null"] }
       responses:
         "200": { description: Anotação atualizada }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Favorito não encontrado }
   /garage/proposals:
     post:
@@ -310,8 +334,8 @@ paths:
                 message: { type: string }
       responses:
         "201": { description: Proposta criada e evento registrado no Outbox }
-        "400": { description: Dados obrigatórios ausentes }
-        "401": { description: Não autenticado }
+        "400": { description: Dados obrigatórios ausentes ou inválidos }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { description: Já existe proposta pendente }
   /garage/admin/proposals:
     get:
@@ -322,8 +346,8 @@ paths:
         - bearerAuth: []
       responses:
         "200": { description: Lista de propostas não arquivadas }
-        "401": { description: Não autenticado }
-        "403": { description: Papel de administrador necessário }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AdminRequired" }
   /garage/admin/proposals/{proposalId}/status:
     patch:
       operationId: updateAdminProposalStatus
@@ -332,10 +356,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: proposalId
-          in: path
-          required: true
-          schema: { type: string }
+        - $ref: "#/components/parameters/proposalId"
       requestBody:
         required: true
         content:
@@ -350,25 +371,25 @@ paths:
       responses:
         "200": { description: Status atualizado }
         "400": { description: Status inválido }
-        "401": { description: Não autenticado }
-        "403": { description: Papel de administrador necessário }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AdminRequired" }
         "404": { description: Proposta não encontrada }
   /garage/admin/proposals/{proposalId}:
     delete:
       operationId: archiveAdminProposal
       tags: [Proposals]
       summary: Arquiva proposta como administrador
+      description: >-
+        Remove a proposta apenas da lista administrativa (arquivamento); o
+        registro não é excluído do banco.
       security:
         - bearerAuth: []
       parameters:
-        - name: proposalId
-          in: path
-          required: true
-          schema: { type: string }
+        - $ref: "#/components/parameters/proposalId"
       responses:
         "200": { description: Proposta arquivada }
-        "401": { description: Não autenticado }
-        "403": { description: Papel de administrador necessário }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AdminRequired" }
         "404": { description: Proposta não encontrada }
   /garage/{id}:
     get:
@@ -378,17 +399,21 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/id"
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, description: Identificador do usuário }
         - $ref: "#/components/parameters/page"
         - $ref: "#/components/parameters/limit10"
       responses:
         "200": { description: Propostas paginadas do usuário }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
     put:
       operationId: updateOwnProposal
       tags: [Proposals]
       summary: Atualiza valor ou mensagem de proposta própria
+      description: Neste método, id corresponde ao proposalId da rota Express (`/:proposalId`).
       security:
         - bearerAuth: []
       parameters:
@@ -409,13 +434,14 @@ paths:
       responses:
         "200": { description: Proposta atualizada }
         "400": { description: Valor inválido }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Proposta pertence a outro usuário }
         "404": { description: Proposta não encontrada }
     delete:
       operationId: deleteOwnProposal
       tags: [Proposals]
       summary: Exclui proposta própria
+      description: Neste método, id corresponde ao proposalId da rota Express (`/:proposalId`).
       security:
         - bearerAuth: []
       parameters:
@@ -425,7 +451,7 @@ paths:
           schema: { type: string, description: Identificador da proposta }
       responses:
         "200": { description: Proposta excluída }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Proposta pertence a outro usuário }
         "404": { description: Proposta não encontrada }
   /test-drives:
@@ -448,9 +474,21 @@ paths:
                 message: { type: string }
       responses:
         "201": { description: Agendamento criado }
-        "400": { description: Dados ausentes ou agendamento duplicado }
-        "401": { description: Não autenticado }
-        "409": { description: Agendamento duplicado }
+        "400":
+          description: >-
+            Dados ausentes ou inválidos, ou agendamento duplicado detectado na
+            verificação prévia (`code: DUPLICATE_TEST_DRIVE`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: >-
+            Conflito de unicidade no banco (`code: CONFLICT`), por exemplo em
+            requisições concorrentes para o mesmo horário.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /test-drives/user/{id}:
     get:
       operationId: listUserTestDrives
@@ -462,7 +500,7 @@ paths:
         - $ref: "#/components/parameters/id"
       responses:
         "200": { description: Agendamentos ordenados por data }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Usuário não corresponde ao token }
   /test-drives/{id}:
     parameters:
@@ -484,7 +522,8 @@ paths:
                 message: { type: string }
       responses:
         "200": { description: Agendamento atualizado }
-        "401": { description: Não autenticado }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Agendamento não encontrado para o usuário }
     delete:
       operationId: deleteOwnTestDrive
@@ -494,17 +533,47 @@ paths:
         - bearerAuth: []
       responses:
         "200": { description: Agendamento excluído }
-        "401": { description: Não autenticado }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { description: Agendamento não encontrado para o usuário }
+  /internal/proposals/{proposalId}/email-event:
+    get:
+      operationId: getProposalEmailEvent
+      tags: [Internal]
+      summary: Obtém dados da proposta para o serviço de e-mail
+      description: >-
+        Uso exclusivo do serviço de e-mail. Autenticada pelo cabeçalho
+        `X-Service-Token`, comparado em tempo constante com `SERVICE_TOKEN`.
+        Não aceita token Bearer de usuário.
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: "#/components/parameters/proposalId"
+      responses:
+        "200": { description: Dados da proposta para montagem do e-mail }
+        "401":
+          description: Token de serviço ausente ou inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: Proposta não encontrada }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
   parameters:
     id:
       name: id
+      in: path
+      required: true
+      schema: { type: string }
+    proposalId:
+      name: proposalId
       in: path
       required: true
       schema: { type: string }
@@ -516,3 +585,42 @@ components:
       name: limit
       in: query
       schema: { type: integer, minimum: 1, default: 10 }
+  schemas:
+    Error:
+      type: object
+      required: [error, message, code]
+      properties:
+        error: { type: string, description: Mantido por compatibilidade com os clientes }
+        message: { type: string }
+        code:
+          type: string
+          examples: [UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INVALID_JSON, DUPLICATE_TEST_DRIVE, INTERNAL_SERVER_ERROR]
+        requestId:
+          type: string
+          description: Identificador de correlação, o mesmo registrado nos logs
+  responses:
+    BadRequest:
+      description: Dados inválidos, ausentes ou JSON malformado (`INVALID_JSON`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Não autenticado (token ausente, inválido ou expirado)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AdminRequired:
+      description: Papel de administrador necessário (usuário ativo com role admin)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Limite de requisições excedido
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ServiceUnavailable:
+      description: Redis indisponível para o limitador de requisições
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
